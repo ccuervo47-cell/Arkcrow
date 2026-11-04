@@ -38,11 +38,15 @@ class OllamaNoDisponible(RuntimeError):
     pass
 
 
+# Ollama es LOCAL: nunca debe pasar por el proxy corporativo (en Windows urllib toma el proxy del sistema).
+_SIN_PROXY = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
 def _post(ruta: str, datos: dict, timeout: float = 300) -> dict:
     req = urllib.request.Request(f"{HOST}{ruta}", data=json.dumps(datos).encode(),
                                  headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with _SIN_PROXY.open(req, timeout=timeout) as r:
             return json.loads(r.read())
     except (urllib.error.URLError, ConnectionError, TimeoutError) as e:
         raise OllamaNoDisponible(f"Ollama no responde en {HOST}: {e}") from e
@@ -50,7 +54,7 @@ def _post(ruta: str, datos: dict, timeout: float = 300) -> dict:
 
 def modelos_instalados() -> list[str]:
     try:
-        with urllib.request.urlopen(f"{HOST}/api/tags", timeout=3) as r:
+        with _SIN_PROXY.open(f"{HOST}/api/tags", timeout=3) as r:
             return [m["name"] for m in json.loads(r.read()).get("models", [])]
     except Exception:  # noqa: BLE001
         return []
