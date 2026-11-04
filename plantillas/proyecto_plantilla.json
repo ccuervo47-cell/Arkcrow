@@ -1,0 +1,114 @@
+{
+  "obra": "NOMBRE-DE-LA-OBRA",
+  "nombre_archivo": "Obra_APU_Memoria_Balance",
+  "encabezado": {
+    "fecha": "POR DILIGENCIAR",
+    "corte": "POR DILIGENCIAR",
+    "fecha_corte": "POR DILIGENCIAR",
+    "minima_cuantia": "POR DILIGENCIAR",
+    "invitacion": "POR DILIGENCIAR",
+    "contrato": "POR DILIGENCIAR",
+    "objeto": "POR DILIGENCIAR",
+    "contratista": "POR DILIGENCIAR",
+    "nit_contratista": "POR DILIGENCIAR",
+    "representante": "POR DILIGENCIAR",
+    "interventor": "POR DILIGENCIAR",
+    "supervisor": "POR DILIGENCIAR",
+    "cargo_supervisor": "POR DILIGENCIAR",
+    "elaboro": "POR DILIGENCIAR",
+    "unidad_gestora": "POR DILIGENCIAR"
+  },
+  "parametros": {
+    "prestaciones": 0.52,
+    "herramienta_menor": 0.05,
+    "distancia_km": 20,
+    "administracion": 0.13,
+    "imprevistos": 0.03,
+    "utilidad": 0.08,
+    "iva_utilidad": 0.19
+  },
+  "supuestos": [
+    [
+      "(parámetro)",
+      "(valor)",
+      "(unidad)",
+      "(fuente o 'SUPUESTO')"
+    ]
+  ],
+  "capitulos": [
+    {
+      "codigo": "2",
+      "nombre": "OBRA CIVIL (MAMPOSTERÍA, DEMOLICIÓN, PAÑETE Y ACABADOS)",
+      "items": [
+        {
+          "codigo": "2.03",
+          "descripcion": "Muro en mampostería de bloque de arcilla No. 4, pegado con mortero 1:4.",
+          "unidad": "m²",
+          "plano": "Planta y alzados arquitectónicos (Revit)",
+          "memoria": [
+            [
+              "Muros por ejes longitudinales",
+              3.68,
+              null,
+              3.0,
+              2
+            ],
+            [
+              "Muros por ejes transversales",
+              3.24,
+              null,
+              3.0,
+              2
+            ],
+            [
+              "Vano puerta P-101",
+              0.85,
+              null,
+              2.1,
+              -1
+            ],
+            [
+              "Vano ventana V-39 (medida supuesta)",
+              1.5,
+              null,
+              1.2,
+              -1
+            ]
+          ],
+          "apu": {
+            "equipo": [
+              [
+                "EQ-AND",
+                9
+              ]
+            ],
+            "materiales": [
+              [
+                "MAT-BLQ4",
+                16
+              ],
+              [
+                "MAT-CEM",
+                0.086
+              ],
+              [
+                "MAT-ARE",
+                0.012
+              ]
+            ],
+            "mano_obra": [
+              [
+                "MO-OFI",
+                9
+              ],
+              [
+                "MO-AYU",
+                9
+              ]
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

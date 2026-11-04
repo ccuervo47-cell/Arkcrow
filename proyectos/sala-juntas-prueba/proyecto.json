@@ -1,0 +1,200 @@
+{
+  "obra": "sala-juntas-prueba",
+  "nombre_archivo": "SalaJuntas_APU_Memoria_Balance",
+  "encabezado": {
+    "fecha": "04/11/26",
+    "corte": "01",
+    "fecha_corte": "04/11/26",
+    "minima_cuantia": "NO",
+    "invitacion": "N/A (prueba técnica)",
+    "contrato": "PT-RC-2026 (prueba técnica)",
+    "objeto": "Construcción de sala de juntas (habitación compacta) según planos Revit",
+    "contratista": "R&C Redes y Construcciones S.A.S.",
+    "nit_contratista": "POR DILIGENCIAR",
+    "representante": "POR DILIGENCIAR",
+    "interventor": "N/A (sin interventoría en la prueba)",
+    "supervisor": "Arq. Sergio Arévalo",
+    "cargo_supervisor": "Subdirección de Proyectos",
+    "elaboro": "Arq. Cristian Mauricio Cuervo Ramírez",
+    "unidad_gestora": "Subdirección de Proyectos"
+  },
+  "parametros": {
+    "prestaciones": 0.52,
+    "herramienta_menor": 0.05,
+    "distancia_km": 20,
+    "administracion": 0.13,
+    "imprevistos": 0.03,
+    "utilidad": 0.08,
+    "iva_utilidad": 0.19
+  },
+  "supuestos": [
+    ["Recinto exterior", "3,82 x 3,38", "m", "Dato del enunciado"],
+    ["Recinto interior", "3,54 x 3,10", "m", "Dato del enunciado"],
+    ["Espesor de muro terminado", "0,14", "m", "Deducido: (3,82 - 3,54) / 2. Bloque No. 4 + pañete 1,5-2 cm por cara"],
+    ["Altura de muros", "3,00", "m", "Dato del enunciado. Acabados de muro a altura completa (no se descuenta el cielo raso)"],
+    ["Puerta P-101", "0,85 x 2,10", "m", "Dato del enunciado"],
+    ["Ventana V-39", "1,50 x 1,20", "m", "SUPUESTO: el enunciado no da la medida. Verificar en plano de carpintería"],
+    ["Espesor placa de contrapiso", "0,10", "m", "SUPUESTO. Placa sobre la huella exterior del recinto"],
+    ["Cuantía de acero en placa", "80", "kg/m³", "SUPUESTO dentro del rango 60-100 kg/m³ (lección de la prueba)"],
+    ["Espesor mortero de nivelación", "0,04", "m", "Rango usual 3-5 cm (lección de la prueba)"],
+    ["Pañete", "0,015", "m", "Dos caras de muro"],
+    ["Distancia de acarreo de materiales", "20", "km", "SUPUESTO, una sola distancia para todos los materiales"],
+    ["Herramienta menor", "5", "% de MO", "Lección de la prueba: 5-10 % de la mano de obra"],
+    ["Prestaciones sociales", "52", "% del jornal", "Formato de la empresa"],
+    ["Rendimientos y consumos", "-", "-", "SUPUESTOS de práctica usual; ajustar con datos de la obra"]
+  ],
+  "capitulos": [
+    {
+      "codigo": "2",
+      "nombre": "OBRA CIVIL (MAMPOSTERÍA, PAÑETES Y ACABADOS)",
+      "items": [
+        {
+          "codigo": "2.01",
+          "descripcion": "Placa de contrapiso en concreto premezclado 3000 psi, e = 0,10 m, reforzada con acero 60.000 psi. Incluye formaleta de borde, vibrado y curado.",
+          "unidad": "m³",
+          "plano": "Planta arquitectónica / estructural (Revit)",
+          "memoria": [
+            ["Placa sobre huella exterior del recinto", 3.82, 3.38, 0.10, 1]
+          ],
+          "apu": {
+            "equipo": [["EQ-VIB", 3]],
+            "materiales": [["MAT-CON3000", 1.05], ["MAT-ACE60", 80], ["MAT-ALA", 1.6], ["MAT-FOR", 11.2]],
+            "mano_obra": [["MO-OFI", 3], ["MO-AYU", 3], ["MO-AYU", 3]]
+          }
+        },
+        {
+          "codigo": "2.02",
+          "descripcion": "Mortero de nivelación de piso 1:4, e = 0,04 m.",
+          "unidad": "m²",
+          "plano": "Planta arquitectónica (Revit)",
+          "memoria": [
+            ["Área interior del recinto", 3.54, 3.10, null, 1]
+          ],
+          "apu": {
+            "equipo": [["EQ-CAR", 16]],
+            "materiales": [["MAT-CEM", 0.361], ["MAT-ARE", 0.049]],
+            "mano_obra": [["MO-OFI", 16], ["MO-AYU", 16]]
+          }
+        },
+        {
+          "codigo": "2.03",
+          "descripcion": "Muro en mampostería de bloque de arcilla No. 4, pegado con mortero 1:4.",
+          "unidad": "m²",
+          "plano": "Planta y alzados arquitectónicos (Revit)",
+          "memoria": [
+            ["Muros por ejes longitudinales", 3.68, null, 3.00, 2],
+            ["Muros por ejes transversales", 3.24, null, 3.00, 2],
+            ["Vano puerta P-101", 0.85, null, 2.10, -1],
+            ["Vano ventana V-39 (medida supuesta)", 1.50, null, 1.20, -1]
+          ],
+          "apu": {
+            "equipo": [["EQ-AND", 9]],
+            "materiales": [["MAT-BLQ4", 16], ["MAT-CEM", 0.086], ["MAT-ARE", 0.012]],
+            "mano_obra": [["MO-OFI", 9], ["MO-AYU", 9]]
+          }
+        },
+        {
+          "codigo": "2.04",
+          "descripcion": "Pañete liso sobre muros, mortero 1:4, e = 0,015 m (caras interior y exterior).",
+          "unidad": "m²",
+          "plano": "Alzados arquitectónicos (Revit)",
+          "memoria": [
+            ["Cara interior - muros longitudinales", 3.54, null, 3.00, 2],
+            ["Cara interior - muros transversales", 3.10, null, 3.00, 2],
+            ["Cara exterior - muros longitudinales", 3.82, null, 3.00, 2],
+            ["Cara exterior - muros transversales", 3.38, null, 3.00, 2],
+            ["Vano puerta P-101 (2 caras)", 0.85, null, 2.10, -2],
+            ["Vano ventana V-39 (2 caras, medida supuesta)", 1.50, null, 1.20, -2]
+          ],
+          "apu": {
+            "equipo": [["EQ-AND", 14]],
+            "materiales": [["MAT-CEM", 0.142], ["MAT-ARE", 0.019]],
+            "mano_obra": [["MO-OFI", 14], ["MO-AYU", 14]]
+          }
+        },
+        {
+          "codigo": "2.05",
+          "descripcion": "Estuco plástico sobre muros pañetados (caras interior y exterior).",
+          "unidad": "m²",
+          "plano": "Alzados arquitectónicos (Revit)",
+          "memoria": [
+            ["Cara interior - muros longitudinales", 3.54, null, 3.00, 2],
+            ["Cara interior - muros transversales", 3.10, null, 3.00, 2],
+            ["Cara exterior - muros longitudinales", 3.82, null, 3.00, 2],
+            ["Cara exterior - muros transversales", 3.38, null, 3.00, 2],
+            ["Vano puerta P-101 (2 caras)", 0.85, null, 2.10, -2],
+            ["Vano ventana V-39 (2 caras, medida supuesta)", 1.50, null, 1.20, -2]
+          ],
+          "apu": {
+            "equipo": [["EQ-AND", 22]],
+            "materiales": [["MAT-EST", 1.0]],
+            "mano_obra": [["MO-OFI", 22], ["MO-AYU", 22]]
+          }
+        },
+        {
+          "codigo": "2.06",
+          "descripcion": "Pintura en vinilo tipo 1 sobre muros, tres manos (caras interior y exterior).",
+          "unidad": "m²",
+          "plano": "Alzados arquitectónicos (Revit)",
+          "memoria": [
+            ["Cara interior - muros longitudinales", 3.54, null, 3.00, 2],
+            ["Cara interior - muros transversales", 3.10, null, 3.00, 2],
+            ["Cara exterior - muros longitudinales", 3.82, null, 3.00, 2],
+            ["Cara exterior - muros transversales", 3.38, null, 3.00, 2],
+            ["Vano puerta P-101 (2 caras)", 0.85, null, 2.10, -2],
+            ["Vano ventana V-39 (2 caras, medida supuesta)", 1.50, null, 1.20, -2]
+          ],
+          "apu": {
+            "equipo": [["EQ-AND", 30]],
+            "materiales": [["MAT-PVT1", 0.15]],
+            "mano_obra": [["MO-OFI", 30]]
+          }
+        },
+        {
+          "codigo": "2.07",
+          "descripcion": "Cielo raso en drywall, placa de yeso 1/2\" sobre estructura metálica cal. 26, con masillado de juntas.",
+          "unidad": "m²",
+          "plano": "Planta de cielos (Revit)",
+          "memoria": [
+            ["Área interior del recinto", 3.54, 3.10, null, 1]
+          ],
+          "apu": {
+            "equipo": [["EQ-AND", 12], ["EQ-TIN", 12]],
+            "materiales": [["MAT-PYE12", 0.35], ["MAT-VIG", 0.25], ["MAT-OMG", 1.02], ["MAT-ANG", 0.5], ["MAT-TDW", 30], ["MAT-CHZ", 1.5], ["MAT-CIN", 1.5], ["MAT-MAS", 0.8]],
+            "mano_obra": [["MO-INS", 12], ["MO-AYU", 12]]
+          }
+        },
+        {
+          "codigo": "2.08",
+          "descripcion": "Piso laminado AC4 8 mm, instalado flotante sobre espuma de 2 mm.",
+          "unidad": "m²",
+          "plano": "Planta de pisos (Revit)",
+          "memoria": [
+            ["Área interior del recinto", 3.54, 3.10, null, 1]
+          ],
+          "apu": {
+            "equipo": [],
+            "materiales": [["MAT-LAM8", 1.08], ["MAT-ESP2", 1.05]],
+            "mano_obra": [["MO-INS", 20], ["MO-AYU", 20]]
+          }
+        },
+        {
+          "codigo": "2.09",
+          "descripcion": "Guardaescoba en PVC, instalado con adhesivo.",
+          "unidad": "ml",
+          "plano": "Planta de pisos (Revit)",
+          "memoria": [
+            ["Perímetro interior - muros longitudinales", 3.54, null, null, 2],
+            ["Perímetro interior - muros transversales", 3.10, null, null, 2],
+            ["Vano puerta P-101", 0.85, null, null, -1]
+          ],
+          "apu": {
+            "equipo": [["EQ-PIS", 40]],
+            "materiales": [["MAT-GPVC", 1.05], ["MAT-SIL", 0.06]],
+            "mano_obra": [["MO-INS", 40]]
+          }
+        }
+      ]
+    }
+  ]
+}
