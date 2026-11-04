@@ -24,7 +24,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[2]
 INDICE = RAIZ / "datos" / "indice.sqlite"
 FUENTES = [RAIZ / "conocimiento", RAIZ / "memoria"]
-EXTENSIONES = {".pdf", ".md", ".txt", ".docx", ".xlsx", ".csv"}
+EXTENSIONES = {".pdf", ".md", ".txt", ".docx", ".xlsx", ".csv", ".dxf"}
 TAM, SOLAPE = 1500, 200
 
 STOP = set("""a al algo como con cual cuales cuando de del desde donde el ella ellas ellos en entre era es esa ese eso esta
@@ -94,6 +94,9 @@ def extraer(ruta: Path):
         yield from _docx(ruta)
     elif ext == ".xlsx":
         yield from _xlsx(ruta)
+    elif ext == ".dxf":   # planos de AutoCAD: cantidades y textos por capa
+        from .cad import leer, texto_para_indice
+        yield from texto_para_indice(leer(ruta))
 
 
 def trocear(texto: str) -> list[str]:

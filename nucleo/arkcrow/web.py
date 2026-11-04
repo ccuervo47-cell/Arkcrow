@@ -52,7 +52,7 @@ class App:
         from .conocimiento import EXTENSIONES, RAIZ
         nombre = Path(nombre).name
         if Path(nombre).suffix.lower() not in EXTENSIONES:
-            raise ValueError(f"Formato no soportado: {nombre}. Use PDF, Word (.docx), Excel (.xlsx), .txt, .md o .csv")
+            raise ValueError(f"Formato no soportado: {nombre}. Use PDF, Word (.docx), Excel (.xlsx), AutoCAD .dxf, .txt, .md o .csv (los .dwg guárdelos como DXF)")
         destino = destino.strip().strip("/\\")
         if not re.fullmatch(r"(normas|empresa|precios|confidencial|obras/[a-z0-9][a-z0-9._-]{0,60})", destino):
             raise ValueError("Destino no válido")
@@ -236,7 +236,7 @@ aside h2{font-size:14px;margin:4px 0 8px;color:var(--azul)}.t{border:1px solid v
 <option value="obras">Documento de la obra activa</option><option value="normas">Norma</option>
 <option value="confidencial">Confidencial (nunca sale del equipo)</option><option value="empresa">Formato de la empresa</option>
 <option value="precios">Precios</option></select>
-<input type="file" id="archivo" multiple accept=".pdf,.docx,.xlsx,.txt,.md,.csv" style="width:100%;font-size:12px">
+<input type="file" id="archivo" multiple accept=".pdf,.docx,.xlsx,.txt,.md,.csv,.dxf" style="width:100%;font-size:12px">
 <div id="subiendo" class="small"></div>
 <h2 style="margin-top:16px">Base de conocimiento</h2><div id="docs" class="small"></div>
 <button class="sec" id="indexar" type="button">Reindexar documentos</button>
