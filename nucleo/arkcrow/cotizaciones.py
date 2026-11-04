@@ -247,6 +247,9 @@ def solicitudes(filas: list[dict], carpeta: str | Path, obra: str, lugar: str, c
 def desde_comparativo(ruta: str | Path) -> dict:
     """Cotizaciones elegidas en el comparativo -> {insumo: {precio, proveedor, fecha}} para spec['cotizaciones']."""
     ws = load_workbook(ruta, data_only=True)["COMPARATIVO"]
+    if all(ws.cell(r, 15).value is None for r in range(5, ws.max_row + 1)):   # sin valores calculados: recalcular
+        from .recalculo import recalcular
+        ws = load_workbook(recalcular(ruta), data_only=True)["COMPARATIVO"]
     out = {}
     for r in range(5, ws.max_row + 1):
         insumo, mejor, prov = ws.cell(r, 2).value, ws.cell(r, 13).value, ws.cell(r, 14).value
