@@ -24,3 +24,8 @@ rem Respaldo diario (solo si el ultimo tiene mas de 24 h)
 ".venv\Scripts\python.exe" -m arkcrow.respaldo si-toca
 rem Abre el chat en el navegador (cierre esta ventana para salir)
 ".venv\Scripts\python.exe" -m arkcrow.web
+if errorlevel 1 (
+  echo.
+  echo *** ARKCROW OBRA se cerro por un error. Tome una captura de esta ventana y enviela. ***
+  pause
+)
