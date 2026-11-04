@@ -83,7 +83,32 @@ def ejecutar_aprobadas(hay_internet, ejecutores: dict | None = None) -> list[dic
 
 
 # ---------------------------------------------------------------- ejecutores reales
+def _web_gratis(pregunta: str, instruccion: str) -> str:
+    """Búsqueda web gratuita + modelo local (si existe). Costo cero."""
+    from . import llm, web_libre
+    paginas = web_libre.investigar(pregunta)
+    if not paginas:
+        return "La búsqueda web no devolvió resultados."
+    fuentes = "\n".join(f"[WEB {i}] {p['titulo']}: {p['url']}" for i, p in enumerate(paginas, start=1))
+    if not llm.elegir_modelo():
+        return "Resultados (sin modelo local para resumir):\n" + "\n\n".join(
+            f"{p['titulo']}\n{p['url']}\n{(p.get('texto') or p['resumen'])[:600]}" for p in paginas)
+    web = "\n\n".join(f"[WEB {i}] {p['titulo']} - {p['url']}\n{p.get('texto') or p['resumen']}"
+                       for i, p in enumerate(paginas, start=1))
+    texto = llm.chat([{"role": "system", "content": instruccion + " Cita [WEB n]. No inventes datos."},
+                      {"role": "user", "content": f"{web}\n\nCONSULTA: {pregunta}"}])
+    return texto + "\n\nFuentes:\n" + fuentes
+
+
+def _pago_activo() -> bool:
+    from . import enrutador, nube
+    return enrutador.nube_de_pago() and nube.configurada()
+
+
 def _consulta_web(t):
+    pregunta = t["datos"].get("pregunta", t["descripcion"])
+    if not _pago_activo():
+        return f"Respuesta guardada en {_guardar_resultado(t, _web_gratis(pregunta, 'Responde en español para un arquitecto residente en Colombia.'))}"
     from . import nube
     r = nube.preguntar("Eres el asistente técnico de un arquitecto residente en Colombia. Responde en español, "
                        "citando las fuentes web (URL). Si no encuentras fuente oficial, dilo.",
@@ -98,6 +123,12 @@ def _actualizar_precios(t):
     codigos = t["datos"].get("codigos") or [c for c, r in ins.items() if r["tipo"] == "MAT"]
     lista = "\n".join(f"- {c}: {ins[c]['descripcion']} ({ins[c]['unidad']}), precio actual en base {ins[c]['precio']:,.0f}"
                       for c in codigos if c in ins)
+    if not _pago_activo():
+        texto = _web_gratis("precio " + ", ".join(ins[c]["descripcion"] for c in codigos[:6] if c in ins) + " Bogotá",
+                            "Extrae precios de mercado en COP con unidad y fuente. Si no hay dato confiable di 'sin dato'.")
+        destino = _guardar_resultado(t, "PROPUESTA DE ACTUALIZACIÓN DE PRECIOS (revisar antes de aplicar a la base)\n\n"
+                                        + lista + "\n\n" + texto)
+        return f"Propuesta guardada en {destino} (la base de precios NO se modificó)"
     r = nube.preguntar("Investigas precios de materiales de construcción en Bogotá, Colombia. Para cada insumo da "
                        "precio de mercado actual en COP, unidad, proveedor/fuente con URL y fecha. Si no hay dato "
                        "confiable, escribe 'sin dato'. No inventes.", [{"role": "user", "content": lista}], web=True)

@@ -121,7 +121,7 @@ def es_confidencial(ruta: Path) -> bool:
 # --------------------------------------------------------------------- índice
 def conectar(ruta: Path = INDICE) -> sqlite3.Connection:
     ruta.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(ruta)
+    con = sqlite3.connect(ruta, check_same_thread=False)   # la interfaz web lo usa bajo un candado
     con.executescript("""
         CREATE TABLE IF NOT EXISTS meta (clave TEXT PRIMARY KEY, valor TEXT);
         CREATE TABLE IF NOT EXISTS docs (ruta TEXT PRIMARY KEY, mtime REAL, tam INTEGER, n INTEGER, confidencial INTEGER);

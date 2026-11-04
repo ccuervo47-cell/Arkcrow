@@ -78,7 +78,8 @@ def estado_modo() -> str:
     partes = ["ONLINE" if online else "OFFLINE"]
     partes.append(f"modelo local {local}" if local else "sin modelo local (solo búsqueda)")
     if online:
-        partes.append(f"nube {nube.MODELO_NUBE}" if nube.configurada() else "nube sin clave (.env)")
+        partes.append(f"nube de pago {nube.MODELO_NUBE}" if enrutador.nube_de_pago() and nube.configurada()
+                      else "búsqueda web gratuita")
     return "[" + " · ".join(partes) + "]"
 
 
@@ -157,6 +158,12 @@ class Asistente:
                 d = enrutador.Decision(d.modo, "local" if llm.elegir_modelo() else "busqueda", llm.elegir_modelo(),
                                        f"la nube falló: {e}", fuentes)
                 aviso = f"(La nube no respondió: {e} Uso el modo local.)\n\n" + aviso
+        if d.motor == "web":
+            if faltan:
+                aviso = (f"⚠ {', '.join(faltan)} no está en la base local. Lo que sigue viene de INTERNET: verifíquelo "
+                         "en el documento oficial y, si sirve, descárguelo a conocimiento/normas/ para citarlo por "
+                         "página.\n\n")
+            texto = aviso + self._con_web(pregunta, d, faltan)
         if texto is None and d.motor == "local":
             try:
                 texto = aviso + self._con_modelo(pregunta, fuentes, d.modelo, faltan)
@@ -183,6 +190,36 @@ class Asistente:
             d.modelo = r.modelo
         self.historial += [{"role": "user", "content": pregunta}, {"role": "assistant", "content": texto}]
         return texto
+
+    def _con_web(self, pregunta, d, faltan) -> str:
+        from . import web_libre
+        try:
+            paginas = web_libre.investigar(pregunta)
+        except Exception as e:  # noqa: BLE001
+            paginas, d.motivo = [], f"falló la búsqueda web: {e}"
+        if not paginas:
+            d.motor = "local" if d.modelo else "busqueda"
+            d.web = False
+            texto = "(La búsqueda web no devolvió resultados.)\n\n"
+            return texto + (self._con_modelo(pregunta, d.fuentes, d.modelo, faltan) if d.modelo
+                            else self._extractiva(d.fuentes))
+        web = "\n\n".join(f"[WEB {i}] {p['titulo']} - {p['url']}\n{p.get('texto') or p['resumen']}"
+                           for i, p in enumerate(paginas, start=1))
+        lista = "\n".join(f"[WEB {i}] {p['titulo']}: {p['url']}" for i, p in enumerate(paginas, start=1))
+        if not d.modelo:
+            return ("Resultados de la búsqueda web gratuita (sin modelo local para resumirlos):\n" +
+                    "\n".join(f"\n▸ {p['titulo']}\n  {p['url']}\n  {(p.get('texto') or p['resumen'])[:400]}"
+                              for p in paginas))
+        mensajes = [{"role": "system", "content": self._sistema(faltan) + " Los resultados WEB vienen de internet: "
+                     "cítalos como [WEB n] con su URL y advierte si no son fuente oficial."}] + \
+            self._mensajes(pregunta, d.fuentes)
+        mensajes[-1]["content"] = f"RESULTADOS WEB:\n{web}\n\n" + mensajes[-1]["content"]
+        try:
+            texto = llm.chat(mensajes, modelo=d.modelo)
+        except llm.OllamaNoDisponible:
+            return "El modelo local no respondió. Resultados web:\n" + lista
+        self.historial += [{"role": "user", "content": pregunta}, {"role": "assistant", "content": texto}]
+        return texto + "\n\nFuentes web:\n" + lista
 
     def _con_modelo(self, pregunta, fuentes, modelo, faltan=()) -> str:
         mensajes = [{"role": "system", "content": self._sistema(faltan)}] + self._mensajes(pregunta, fuentes)

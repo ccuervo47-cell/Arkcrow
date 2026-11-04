@@ -94,6 +94,7 @@ class TestPrivacidad(unittest.TestCase):
     def _online(self):
         return [mock.patch.object(enrutador, "hay_internet", return_value=True),
                 mock.patch.object(nube, "configurada", return_value=True),
+                mock.patch.object(enrutador, "nube_de_pago", return_value=True),
                 mock.patch.object(llm, "elegir_modelo", return_value=None)]
 
     def _con(self, parches, fn):

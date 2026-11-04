@@ -10,3 +10,8 @@ modelos/
 proyectos/*/fotos/
 proyectos/zz-*/
 .claude/settings.local.json
+.venv/
+.env
+instalacion.log
+python/
+datos/resultados_cola/
