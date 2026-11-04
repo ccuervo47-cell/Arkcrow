@@ -1,0 +1,15 @@
+{
+  "corte": 2,
+  "fecha": "2026-11-30",
+  "desde": "2026-11-16",
+  "hasta": "2026-11-30",
+  "nota": "EJEMPLO: cantidades ficticias para probar el acta",
+  "cantidades": {
+    "2.04": {"cantidad": 35.87, "memoria": true},
+    "2.05": {"cantidad": 75.87, "memoria": true},
+    "2.06": {"cantidad": 60.0, "memoria": true},
+    "2.08": {"cantidad": 11.5, "memoria": true},
+    "2.09": {"cantidad": 12.43, "memoria": true}
+  },
+  "observaciones": ["Corte de ejemplo. Pintura de muros al 79 %; falta la última mano en la cara exterior."]
+}

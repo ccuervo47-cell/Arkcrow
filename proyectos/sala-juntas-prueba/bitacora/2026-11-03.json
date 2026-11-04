@@ -1,0 +1,62 @@
+{
+  "clima": {
+    "manana": "mañana soleado",
+    "tarde": "tarde lluvia 2 h",
+    "lluvia_h": 2.0
+  },
+  "personal": [
+    {
+      "cargo": "oficial",
+      "cantidad": 1,
+      "empresa": ""
+    },
+    {
+      "cargo": "ayudantes",
+      "cantidad": 3,
+      "empresa": ""
+    },
+    {
+      "cargo": "instaladores drywall",
+      "cantidad": 2,
+      "empresa": "Drywall Andes"
+    }
+  ],
+  "equipos": [
+    {
+      "equipo": "andamio multidireccional",
+      "cantidad": 4,
+      "horas": 8.0
+    },
+    {
+      "equipo": "taladro inalámbrico",
+      "cantidad": 1,
+      "horas": 6.0
+    }
+  ],
+  "actividades": [
+    {
+      "item": "2.03",
+      "descripcion": "mampostería bloque No. 4 ejes 1 y 2",
+      "cantidad": 18.0,
+      "unidad": "m²",
+      "avance": 0.5
+    },
+    {
+      "item": "2.07",
+      "descripcion": "estructura de cielo raso drywall",
+      "cantidad": 6.0,
+      "unidad": "m²",
+      "avance": 0.4
+    }
+  ],
+  "novedades": [
+    "el cemento llegó a las 11 a. m.; se perdió media mañana de pega"
+  ],
+  "visitas": [
+    "interventoría revisó plomos de muros, sin observaciones"
+  ],
+  "fecha": "2026-11-03",
+  "fuente": "texto",
+  "actualizado": "2026-11-04T13:57",
+  "fotos": []
+}

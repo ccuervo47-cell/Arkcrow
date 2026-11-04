@@ -1,0 +1,11 @@
+# ARKCROW OBRA - dependencias de Python (todas funcionan offline una vez instaladas)
+openpyxl>=3.1
+numpy>=1.26
+pypdf>=4
+pdfplumber>=0.10
+python-docx>=1.1
+Pillow>=10
+reportlab>=4
+ifcopenshell>=0.8
+faster-whisper>=1.0
+pywin32>=306; sys_platform == "win32"

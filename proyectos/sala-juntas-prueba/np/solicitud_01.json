@@ -1,0 +1,39 @@
+{
+  "solicitud": "01",
+  "supuestos": [
+    ["Sección columnetas y viga de amarre", "0,10 x 0,15", "m", "SUPUESTO para muro de bloque No. 4; confirmar con diseño estructural y NSR-10"],
+    ["Refuerzo columnetas / viga", "4 No. 3 + flejes No. 2 c/0,15", "-", "SUPUESTO: ≈ 2,9 kg/ml"],
+    ["Número de columnetas", "8", "und", "SUPUESTO: 4 esquinas + 2 por vano (P-101 y V-39)"],
+    ["Pintura de cielo raso", "2 manos", "-", "Vinilo tipo 1 sobre drywall masillado"]
+  ],
+  "items": [
+    {
+      "codigo": "NP-01",
+      "descripcion": "Pintura en vinilo tipo 1 sobre cielo raso en drywall, dos manos.",
+      "unidad": "m²",
+      "plano": "Planta de cielos (Revit)",
+      "memoria": [["Cielo raso del recinto", 3.54, 3.10, null, 1]],
+      "apu": {"equipo": [["EQ-AND", 25]], "materiales": [["MAT-PVT1", 0.10]], "mano_obra": [["MO-OFI", 25]]},
+      "justificacion": "El ítem 2.07 (cielo raso en drywall) no incluye acabado final de pintura; sin él, el cielo queda con masilla expuesta y no se cumple el acabado de la sala de juntas.",
+      "causa": "Omisión en el presupuesto original detectada en la revisión técnica."
+    },
+    {
+      "codigo": "NP-02",
+      "descripcion": "Columnetas y viga de amarre en concreto 3000 psi de 0,10 x 0,15 m, reforzadas con 4 No. 3 y flejes No. 2 c/0,15 m, para confinamiento de mampostería.",
+      "unidad": "ml",
+      "plano": "Planta y alzados arquitectónicos / detalle estructural",
+      "memoria": [
+        ["Viga de amarre en corona de muros (perímetro a ejes)", 13.84, null, null, 1],
+        ["Columnetas en esquinas", 3.00, null, null, 4],
+        ["Columnetas a lado y lado de vanos (P-101, V-39)", 3.00, null, null, 4]
+      ],
+      "apu": {
+        "equipo": [["EQ-VIB", 30]],
+        "materiales": [["MAT-CON3000", 0.0158], ["MAT-ACE60", 2.9], ["MAT-ALA", 0.06], ["MAT-FOR", 2.0]],
+        "mano_obra": [["MO-OFI", 6], ["MO-AYU", 6]]
+      },
+      "justificacion": "La NSR-10 exige confinamiento de la mampostería mediante columnetas y vigas de amarre (verificar el capítulo aplicable en la norma indexada y con el diseño estructural). El presupuesto original no las incluye.",
+      "causa": "Requisito normativo no contemplado en la propuesta económica."
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "clima": {
+    "manana": "mañana nublado",
+    "tarde": "tarde soleado"
+  },
+  "personal": [
+    {
+      "cargo": "oficial",
+      "cantidad": 1,
+      "empresa": ""
+    },
+    {
+      "cargo": "ayudantes",
+      "cantidad": 2,
+      "empresa": ""
+    },
+    {
+      "cargo": "instaladores drywall",
+      "cantidad": 2,
+      "empresa": "Drywall Andes"
+    }
+  ],
+  "equipos": [
+    {
+      "equipo": "andamio multidireccional",
+      "cantidad": 4,
+      "horas": 8.0
+    }
+  ],
+  "actividades": [
+    {
+      "item": "2.03",
+      "descripcion": "mampostería bloque No. 4 ejes A y B",
+      "cantidad": 19.9,
+      "unidad": "m²",
+      "avance": 1.0
+    },
+    {
+      "item": "2.07",
+      "descripcion": "placa de yeso cielo raso",
+      "cantidad": 4.97,
+      "unidad": "m²",
+      "avance": 1.0
+    }
+  ],
+  "novedades": [
+    "pendiente definir con supervisión la medida real de la ventana V-39"
+  ],
+  "visitas": [],
+  "fecha": "2026-11-04",
+  "fuente": "texto",
+  "actualizado": "2026-11-04T13:57",
+  "fotos": []
+}

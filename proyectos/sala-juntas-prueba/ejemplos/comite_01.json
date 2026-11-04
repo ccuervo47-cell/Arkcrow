@@ -1,0 +1,8 @@
+{"numero": "01", "fecha": "05/11/2026", "lugar": "Sala de juntas - obra",
+ "asistentes": [{"nombre": "Arq. Sergio Arévalo", "cargo": "Supervisor", "entidad": "Subdirección de Proyectos"},
+                {"nombre": "Arq. Cristian Mauricio Cuervo Ramírez", "cargo": "Residente de obra", "entidad": "R&C"}],
+ "temas": ["Avance de obra", "Ítems no previstos NP-01 y NP-02", "Medida de la ventana V-39"],
+ "desarrollo": ["Se presenta un avance programado del 66,7 % frente a un ejecutado del 46,3 % (cronograma del 04/11/2026)."],
+ "compromisos": [{"compromiso": "Enviar la solicitud de NP-01 y NP-02 con sus APU", "responsable": "Residente R&C", "fecha": "07/11/2026"},
+                 {"compromiso": "Confirmar la medida de la ventana V-39", "responsable": "Supervisión", "fecha": "08/11/2026"}],
+ "proxima": "12/11/2026, 8:00 a. m."}

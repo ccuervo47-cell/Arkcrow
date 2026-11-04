@@ -7,3 +7,6 @@ datos/indice/
 modelos/
 *.gguf
 ~$*
+proyectos/*/fotos/
+proyectos/zz-*/
+.claude/settings.local.json

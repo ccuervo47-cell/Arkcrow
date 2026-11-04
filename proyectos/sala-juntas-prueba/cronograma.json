@@ -1,0 +1,18 @@
+{
+  "inicio": "2026-11-03",
+  "fecha_corte": "2026-11-15",
+  "nota": "EJEMPLO para la sala de juntas; duraciones SUPUESTAS a partir de los rendimientos de los APU",
+  "actividades": [
+    {"id": "A", "actividad": "Localización, replanteo y placa de contrapiso", "item": "2.01", "duracion": 2, "predecesoras": [], "ejecutado": 1.0},
+    {"id": "B", "actividad": "Fraguado y curado de placa", "item": "2.01", "duracion": 3, "predecesoras": ["A"], "ejecutado": 1.0},
+    {"id": "C", "actividad": "Mampostería bloque No. 4", "item": "2.03", "duracion": 3, "predecesoras": ["B"], "ejecutado": 1.0},
+    {"id": "D", "actividad": "Columnetas y viga de amarre (NP-02)", "item": "NP-02", "duracion": 3, "predecesoras": ["C"], "ejecutado": 0.5},
+    {"id": "E", "actividad": "Pañete muros", "item": "2.04", "duracion": 3, "predecesoras": ["D"], "ejecutado": 0.0},
+    {"id": "F", "actividad": "Mortero de nivelación de piso", "item": "2.02", "duracion": 1, "predecesoras": ["B"], "ejecutado": 1.0},
+    {"id": "G", "actividad": "Estructura y placa de cielo raso drywall", "item": "2.07", "duracion": 2, "predecesoras": ["D"], "ejecutado": 0.3},
+    {"id": "H", "actividad": "Estuco muros", "item": "2.05", "duracion": 2, "predecesoras": ["E"], "ejecutado": 0.0},
+    {"id": "I", "actividad": "Pintura muros y cielo (2.06 + NP-01)", "item": "2.06", "duracion": 3, "predecesoras": ["H", "G"], "ejecutado": 0.0},
+    {"id": "J", "actividad": "Piso laminado", "item": "2.08", "duracion": 1, "predecesoras": ["I", "F"], "ejecutado": 0.0},
+    {"id": "K", "actividad": "Guardaescoba y aseo final", "item": "2.09", "duracion": 1, "predecesoras": ["J"], "ejecutado": 0.0}
+  ]
+}

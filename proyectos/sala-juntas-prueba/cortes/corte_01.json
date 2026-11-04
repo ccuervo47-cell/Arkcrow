@@ -1,0 +1,15 @@
+{
+  "corte": 1,
+  "fecha": "2026-11-15",
+  "desde": "2026-11-01",
+  "hasta": "2026-11-15",
+  "nota": "EJEMPLO: cantidades ficticias para probar el acta",
+  "cantidades": {
+    "2.01": {"cantidad": 1.29116, "memoria": true},
+    "2.02": {"cantidad": 10.974, "memoria": true},
+    "2.03": {"cantidad": 37.935, "memoria": true},
+    "2.04": {"cantidad": 40.0, "memoria": false},
+    "2.07": {"cantidad": 10.974, "memoria": true, "revisar": true}
+  },
+  "observaciones": ["Corte de ejemplo generado por ARKCROW para validar el formato."]
+}

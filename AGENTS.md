@@ -58,15 +58,15 @@ datos/            arkcrow.sqlite (precios) + indice.sqlite (índice de búsqueda
 | `memoria-cantidades` | Cantidades a partir de medidas, PDF o IFC; resta vanos | ✅ |
 | `presupuesto-balance` | Balance enlazado con AIU + auditor automático | ✅ |
 | `revisor-calidad` | Última etapa obligatoria de toda entrega | ✅ |
-| `cortes-actas` | Actas de corte / avance y semáforo | Fase 5 |
-| `items-no-previstos` | NP con su APU, justificación y oficio | Fase 5 |
-| `bitacora-informe-diario` | Bitácora diaria (texto o voz) e informe semanal | Fase 5 |
-| `registro-fotografico` | Fotos por obra, fecha e ítem (EXIF) y anexo | Fase 5 |
-| `cronograma` | Gantt en Excel, ruta crítica, programado vs. ejecutado | Fase 5 |
-| `normativa-co` | Consultas de normas colombianas con cita de la base local | Fase 5 |
-| `calidad-sst-checklists` | Listas de chequeo de calidad y SST | Fase 5 |
-| `comunicaciones` | Correos, oficios y actas de comité (solo borradores) | Fase 5 |
-| `lectura-planos-bim` | PDF de planos e IFC (ifcopenshell) | Fase 5 |
+| `cortes-actas` | Actas de corte / avance y semáforo | ✅ |
+| `items-no-previstos` | NP con su APU, justificación y oficio | ✅ |
+| `bitacora-informe-diario` | Bitácora diaria (texto o voz) e informe semanal | ✅ |
+| `registro-fotografico` | Fotos por obra, fecha e ítem (EXIF) y anexo | ✅ |
+| `cronograma` | Gantt en Excel, ruta crítica, programado vs. ejecutado | ✅ |
+| `normativa-co` | Consultas de normas colombianas con cita de la base local | ✅ |
+| `calidad-sst-checklists` | Listas de chequeo de calidad y SST | ✅ |
+| `comunicaciones` | Correos, oficios y actas de comité (solo borradores) | ✅ |
+| `lectura-planos-bim` | PDF de planos e IFC (ifcopenshell) | ✅ |
 
 ## Comandos útiles (desde la carpeta ArkcrowObra)
 - Chat por consola: `python -m arkcrow.chat` (con `nucleo` en PYTHONPATH; lo hace `iniciar`).
@@ -74,3 +74,4 @@ datos/            arkcrow.sqlite (precios) + indice.sqlite (índice de búsqueda
 - Buscar en la base local: `python -m arkcrow.conocimiento buscar "texto"`.
 - Armar un balance: `python skills/presupuesto-balance/scripts/armar_balance.py proyectos/<obra>/proyecto.json`.
 - Pruebas: `python -m unittest discover tests -v`.
+- Cada skill de obra tiene un atajo `skills/<skill>/scripts/run.py` (ver su SKILL.md).
