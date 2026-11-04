@@ -71,11 +71,36 @@ class App:
         return {"guardado": final.relative_to(RAIZ).as_posix(), "fragmentos": r["fragmentos"],
                 "confidencial": destino == "confidencial"}
 
+    def obras(self) -> list[str]:
+        from .conocimiento import RAIZ
+        nombres = {d.name for base in (RAIZ / "proyectos", RAIZ / "conocimiento" / "obras") if base.is_dir()
+                   for d in base.iterdir() if d.is_dir() and not d.name.startswith(("zz-", "_", "."))}
+        return sorted(nombres)
+
+    def fijar_obra(self, nombre: str) -> dict:
+        import re
+        from datetime import date
+        from .conocimiento import RAIZ
+        slug = re.sub(r"[^a-z0-9._-]+", "-", conocimiento.norm(nombre).strip()).strip("-.")[:60]
+        if not slug:
+            raise ValueError("Nombre de obra no válido")
+        for d in (RAIZ / "proyectos" / slug, RAIZ / "conocimiento" / "obras" / slug):
+            d.mkdir(parents=True, exist_ok=True)
+        estado = RAIZ / "memoria" / "proyectos" / slug / "estado.md"
+        if not estado.exists():   # plantilla vacía de la obra (sin datos personales)
+            estado.parent.mkdir(parents=True, exist_ok=True)
+            estado.write_text(f"# Obra: {slug}\n\n- Creada: {date.today():%d/%m/%Y}\n- Estado: \n\n## Decisiones\n\n"
+                              "## Pendientes\n\n## Contactos\n", encoding="utf-8")
+        with self.lock:
+            memoria.fijar_obra_activa(slug)
+            self.asistente.memoria = memoria.cargar()
+        return {"obra": slug}
+
     def estado(self) -> dict:
         with self.lock:
             n = self.asistente.con.execute("SELECT COUNT(*) FROM docs").fetchone()[0]
         return {"modo": estado_modo(), "online": enrutador.hay_internet(), "obra": memoria.obra_activa() or "(ninguna)",
-                "documentos": n, "cola": [t for t in cola.listar(None) if t["estado"] in ("pendiente", "aprobada", "error")],
+                "documentos": n, "obras": self.obras(), "cola": [t for t in cola.listar(None) if t["estado"] in ("pendiente", "aprobada", "error")],
                 "propuestas_memoria": len(memoria.pendientes())}
 
 
@@ -134,6 +159,8 @@ def crear_manejador(app: App, puerto: int):
                 if self.path == "/api/cola/ejecutar":
                     return self._json({"hechas": cola.ejecutar_aprobadas(lambda: enrutador.hay_internet(forzar=True)),
                                        "online": enrutador.hay_internet()})
+                if self.path == "/api/obra":
+                    return self._json(app.fijar_obra(datos.get("nombre", "")))
                 if self.path == "/api/subir":
                     return self._json(app.subir(datos.get("nombre", ""), datos.get("destino", ""), datos.get("datos", "")))
                 if self.path == "/api/indexar":
@@ -195,7 +222,7 @@ aside{background:var(--panel);border:1px solid var(--borde);border-radius:10px;p
 aside h2{font-size:14px;margin:4px 0 8px;color:var(--azul)}.t{border:1px solid var(--borde);border-radius:8px;padding:8px;margin:6px 0;font-size:13px}
 .t b{font-size:11px}.small{font-size:12px;color:var(--suave)}a{color:var(--azul)}
 </style></head><body>
-<header><h1>ARKCROW OBRA</h1><span id="modo" class="chip">…</span><span class="small" id="obra"></span></header>
+<header><h1>ARKCROW OBRA</h1><span id="modo" class="chip">…</span><span class="small">Obra activa: <select id="obrasel" title="Cambiar obra activa"></select></span></header>
 <main>
 <section id="chat"><div id="msgs"></div>
 <form id="f"><textarea id="q" placeholder="Escriba su pregunta (Enter para enviar, Shift+Enter nueva línea)"></textarea>
@@ -223,7 +250,7 @@ const enl=t=>esc(t).replace(/(https?:\/\/[^\s)\]]+)/g,'<a href="$1" target="_bla
 async function api(ruta,datos){const r=await fetch(ruta,datos===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(datos)});return r.json()}
 function msg(cls,html){const d=document.createElement('div');d.className='m '+cls;d.innerHTML=html;$('#msgs').appendChild(d);$('#msgs').scrollTop=1e9;return d}
 async function estado(){const e=await api('/api/estado');$('#modo').textContent=e.modo;$('#modo').className='chip '+(e.online?'on':'off');
-$('#obra').textContent='Obra activa: '+e.obra;obraActiva=e.obra.startsWith('(')?'':e.obra;$('#docs').textContent=e.documentos+' documento(s) indexado(s)';
+const sel=$('#obrasel');if(document.activeElement!==sel){sel.innerHTML=e.obras.map(o=>`<option${o===e.obra?' selected':''}>${esc(o)}</option>`).join('')+'<option value="__nueva">+ Nueva obra…</option>';}obraActiva=e.obra.startsWith('(')?'':e.obra;$('#docs').textContent=e.documentos+' documento(s) indexado(s)';
 $('#cola').innerHTML=e.cola.length?e.cola.map(t=>`<div class="t"><b>${esc(t.estado.toUpperCase())}</b> ${esc(t.descripcion)}<br>
 ${t.estado==='pendiente'?`<button class="sec" onclick="accion('aprobar','${t.id}')">Aprobar</button> <button class="sec" onclick="accion('descartar','${t.id}')">Descartar</button>`:esc(String(t.resultado||''))}</div>`).join(''):'Sin tareas pendientes.'}
 async function accion(a,id){await api('/api/cola/'+a,{id});estado()}
@@ -239,6 +266,8 @@ $('#encolar').onclick=async()=>{await api('/api/encolar',{});estado()};
 $('#ejecutar').onclick=async()=>{const r=await api('/api/cola/ejecutar',{});msg('a',r.online?`Ejecutadas: ${r.hechas.length}`:'Sin internet: se ejecutarán cuando haya conexión.');estado()};
 $('#indexar').onclick=async()=>{const r=await api('/api/indexar',{});msg('a','Índice actualizado: '+r.fragmentos+' fragmentos.');estado()};
 let obraActiva='';
+$('#obrasel').onchange=async e=>{let n=e.target.value;if(n==='__nueva'){n=prompt('Nombre de la nueva obra (ej.: corozal)');if(!n){estado();return}}
+const r=await api('/api/obra',{nombre:n});msg('a',r.error?'⚠ '+esc(r.error):`🏗 Obra activa: <b>${esc(r.obra)}</b>. Los documentos que suba como "obra activa" quedan en <code>conocimiento/obras/${esc(r.obra)}/</code>.`);estado()};
 $('#archivo').onchange=async e=>{const files=[...e.target.files];let d=$('#destino').value;
 if(d==='obras')d='obras/'+(obraActiva||'general').toLowerCase().replace(/[^a-z0-9._-]+/g,'-');
 for(const f of files){$('#subiendo').textContent='Subiendo '+f.name+'…';

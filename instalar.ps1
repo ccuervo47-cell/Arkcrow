@@ -89,8 +89,9 @@ if (-not $PyExe) {
     if (Confirmar "Instalar Python 3.12 SOLO para su usuario dentro de $Raiz\python (≈ 25 MB, sin administrador)?") {
         $inst = Join-Path $env:TEMP "python-3.12.10-amd64.exe"
         Descargar "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe" $inst
-        Start-Process $inst -Wait -ArgumentList @("/quiet", "InstallAllUsers=0", "PrependPath=0", "Include_launcher=0",
+        $proc = Start-Process $inst -PassThru -ArgumentList @("/quiet", "InstallAllUsers=0", "PrependPath=0", "Include_launcher=0",
             "Include_test=0", "Shortcuts=0", "AssociateFiles=0", "TargetDir=$Raiz\python")
+        $proc.WaitForExit()
         $PyExe = $propio; $PyArgs = @()
         if (-not (Probar-Python $PyExe $PyArgs)) { Falla "No se pudo instalar Python. Pida a TI 'Python 3.12 para usuario'."; Stop-Transcript; exit 1 }
         Ok "Python instalado en $Raiz\python"
@@ -131,8 +132,11 @@ foreach ($c in @((Join-Path $env:LOCALAPPDATA "Programs\Ollama\ollama.exe"), "ol
 if (-not $OllamaExe) {
     if (Confirmar "Instalar Ollama para su usuario (≈ 1 GB, sin administrador)?") {
         $inst = Join-Path $env:TEMP "OllamaSetup.exe"
+        Write-Host "  (≈ 1 GB, sin barra de avance: puede tardar varios minutos)" -ForegroundColor Yellow
         Descargar "https://ollama.com/download/OllamaSetup.exe" $inst
-        Start-Process $inst -Wait -ArgumentList @("/VERYSILENT", "/NORESTART", "/SUPPRESSMSGBOXES")
+        # OJO: no usar -Wait: en PowerShell espera tambien a la app de Ollama que el instalador deja abierta (se cuelga).
+        $proc = Start-Process $inst -PassThru -ArgumentList @("/VERYSILENT", "/NORESTART", "/SUPPRESSMSGBOXES")
+        $proc.WaitForExit()
         $OllamaExe = Join-Path $env:LOCALAPPDATA "Programs\Ollama\ollama.exe"
         if (-not (Test-Path $OllamaExe)) { Falla "Ollama no quedo instalado. Si TI bloquea instaladores, pida 'Ollama para usuario'."; Stop-Transcript; exit 1 }
         Ok "Ollama instalado"

@@ -89,6 +89,25 @@ class TestWeb(unittest.TestCase):
             shutil.rmtree(destino, ignore_errors=True)
             self._post("/api/indexar", {})
 
+    def test_cambiar_obra_activa(self):
+        from arkcrow import memoria
+        previa = memoria.obra_activa()
+        try:
+            r = self._post("/api/obra", {"nombre": "ZZ Prueba Corozal"})
+            self.assertEqual(r["obra"], "zz-prueba-corozal")
+            self.assertEqual(memoria.obra_activa(), "zz-prueba-corozal")
+            self.assertTrue((RAIZ / "conocimiento" / "obras" / "zz-prueba-corozal").is_dir())
+            e = json.loads(urllib.request.urlopen(self.url + "/api/estado", timeout=10).read())
+            self.assertEqual(e["obra"], "zz-prueba-corozal")
+            with self.assertRaises(urllib.error.HTTPError):
+                self._post("/api/obra", {"nombre": "///"})
+        finally:
+            import shutil
+            memoria.fijar_obra_activa(previa)
+            for d in (RAIZ / "proyectos" / "zz-prueba-corozal", RAIZ / "conocimiento" / "obras" / "zz-prueba-corozal",
+                      RAIZ / "memoria" / "proyectos" / "zz-prueba-corozal"):
+                shutil.rmtree(d, ignore_errors=True)
+
     def test_solo_escucha_en_localhost(self):
         self.assertEqual(self.srv.server_address[0], "127.0.0.1")
 
