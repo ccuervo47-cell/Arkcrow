@@ -115,7 +115,8 @@ if (-not (Test-Path $Venv)) {
     if (-not (Test-Path $Venv)) { Falla "No se pudo crear el entorno .venv"; Stop-Transcript; exit 1 }
 }
 & $Venv -m pip install --upgrade pip --quiet --disable-pip-version-check
-& $Venv -m pip install -r (Join-Path $Raiz "requirements.txt") --quiet --disable-pip-version-check
+Write-Host "  Descargando librerias (≈ 300 MB). Puede tardar 5 a 15 minutos; no cierre la ventana..." -ForegroundColor Yellow
+& $Venv -m pip install -r (Join-Path $Raiz "requirements.txt") --disable-pip-version-check --progress-bar on
 if ($LASTEXITCODE -ne 0) { Falla "pip no pudo instalar las librerias (revise proxy/firewall con TI)."; Stop-Transcript; exit 1 }
 Ok "Librerias instaladas (≈ 300 MB)"
 $env:PYTHONPATH = Join-Path $Raiz "nucleo"
