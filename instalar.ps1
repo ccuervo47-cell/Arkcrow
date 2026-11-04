@@ -120,6 +120,7 @@ Write-Host "  Descargando librerias (≈ 300 MB). Puede tardar 5 a 15 minutos; n
 & $Venv -m pip install -r (Join-Path $Raiz "requirements.txt") --disable-pip-version-check --progress-bar on
 if ($LASTEXITCODE -ne 0) { Falla "pip no pudo instalar las librerias (revise proxy/firewall con TI)."; Stop-Transcript; exit 1 }
 Ok "Librerias instaladas (≈ 300 MB)"
+Set-Content -Path (Join-Path $Raiz ".venv\Lib\site-packages\arkcrow.pth") -Value (Join-Path $Raiz "nucleo") -Encoding ASCII
 $env:PYTHONPATH = Join-Path $Raiz "nucleo"
 
 # ------------------------------------------------------------------ 5. Ollama (motor de IA local)

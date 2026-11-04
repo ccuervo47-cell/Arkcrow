@@ -21,6 +21,14 @@ description: Generar o revisar Análisis de Precio Unitario (APU) en el formato 
 4. Para revisar un APU existente, usa `python skills/presupuesto-balance/scripts/auditar.py <libro.xlsx>`. Revisa las sumas, las unidades, el 52 %, la herramienta menor y los transportes.
 5. Termina siempre con **revisor-calidad**.
 
+## APU en el formato UNAD F-14-3-5 (libro complementario)
+Cuando faltan APU en un libro oficial de la UNAD:
+1. Escribe la especificación JSON en `proyectos/<obra>/`. Ejemplo: `proyectos/corozal-2026/apu_faltantes.json`, con los precios nuevos marcados SUPUESTO y los insumos y rendimientos (und/día) por ítem.
+2. Ejecuta `python -m arkcrow.apu_unad OFICIAL.xlsx especificacion.json salida.xlsx`.
+3. Resultado: un libro **aparte** con la misma geometría (B32, M83, M85), una hoja PRECIOS y una hoja RESUMEN que compara contra el VU del balance.
+4. **No modifiques el libro oficial con openpyxl:** borra logos, casillas y cuadros de texto. Los valores se pasan al oficial fila por fila.
+5. **No "cuadres" rendimientos** para llegar al VU del balance. Reporta la diferencia y deja que el usuario decida.
+
 ## Reglas
 - Las unidades del APU deben ser idénticas a las de la memoria y el balance.
 - No pegues valores donde va una fórmula.

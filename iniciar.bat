@@ -15,6 +15,8 @@ if not exist "nucleo\arkcrow\web.py" (
   pause
   exit /b 1
 )
+rem Registra la carpeta nucleo en Python (para usar "python -m arkcrow..." desde cualquier ventana)
+if not exist ".venv\Lib\site-packages\arkcrow.pth" (echo %~dp0nucleo)> ".venv\Lib\site-packages\arkcrow.pth"
 rem Arranca el motor local si no esta corriendo
 tasklist /FI "IMAGENAME eq ollama.exe" 2>nul | find /I "ollama.exe" >nul
 if errorlevel 1 (

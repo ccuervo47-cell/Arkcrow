@@ -35,6 +35,7 @@ else
   VPY=.venv/bin/python
   $VPY -m pip install --quiet --upgrade pip && $VPY -m pip install --quiet -r requirements.txt
   ok "Librerías instaladas"
+  echo "$RAIZ/nucleo" > "$($VPY -c 'import site;print(site.getsitepackages()[0])')/arkcrow.pth"
 fi
 
 echo "=== 5. Ollama y modelos ==="
