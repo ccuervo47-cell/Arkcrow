@@ -1,0 +1,106 @@
+"""Enrutador ONLINE / OFFLINE y control de privacidad.
+
+- `hay_internet()`: prueba varios destinos con tiempo corto (respeta el proxy corporativo si existe).
+  Cualquier respuesta HTTP (incluso 401/403) cuenta como conexión; solo falla si no hay red/DNS.
+- `decidir()`: elige el motor para cada pregunta:
+    * OFFLINE -> modelo local (Ollama) o, si no hay, solo búsqueda en la base local
+    * ONLINE  -> nube (Claude) cuando hay internet + clave, y la tarea lo amerita o no hay modelo local
+  Preferencia en .env: ARKCROW_PREFERENCIA = auto | local | nube   (auto por defecto)
+- Privacidad: si la pregunta o los fragmentos recuperados son CONFIDENCIALES, NO se envían a la nube sin
+  confirmación explícita (callback `confirmar`). Sin confirmación: se quitan los fragmentos confidenciales
+  o se responde con el modelo local.
+"""
+from __future__ import annotations
+
+import os
+import re
+import time
+import urllib.error
+import urllib.request
+from dataclasses import dataclass, field
+
+from . import llm, nube
+
+DESTINOS = os.environ.get("ARKCROW_PRUEBA_RED",
+                          "https://api.anthropic.com/v1/models,https://pypi.org/simple/,https://www.google.com/generate_204").split(",")
+_CACHE = {"t": 0.0, "v": None}
+TTL = 20  # segundos
+
+PESADO = re.compile(r"\b(busca|buscar|investiga|internet|web|actualiza|actual(es|izad)|reciente|vigente|compara|"
+                    r"redacta|analiza el documento|resume el pdf|norma nueva|cotiza|precio actual)\b", re.I)
+MARCA_CONF = re.compile(r"confidencial|contrato firmado|presupuesto interno|margen|oferta econ[oó]mica", re.I)
+
+
+def hay_internet(forzar: bool = False) -> bool:
+    if os.environ.get("ARKCROW_FORZAR_OFFLINE") == "1":
+        return False
+    if not forzar and _CACHE["v"] is not None and time.time() - _CACHE["t"] < TTL:
+        return _CACHE["v"]
+    ok = False
+    for url in DESTINOS:
+        try:
+            urllib.request.urlopen(urllib.request.Request(url.strip(), method="HEAD"), timeout=3)
+            ok = True
+        except urllib.error.HTTPError:
+            ok = True            # el servidor respondió: hay internet
+        except Exception:  # noqa: BLE001
+            continue
+        if ok:
+            break
+    _CACHE.update(t=time.time(), v=ok)
+    return ok
+
+
+@dataclass
+class Decision:
+    modo: str                 # ONLINE | OFFLINE
+    motor: str                # nube | local | busqueda
+    modelo: str | None
+    motivo: str
+    fuentes: list[dict] = field(default_factory=list)
+    web: bool = False
+    aviso_privacidad: str = ""
+
+    def etiqueta(self) -> str:
+        nombres = {"nube": f"nube {self.modelo}", "local": f"modelo local {self.modelo}",
+                   "busqueda": "solo búsqueda en la base local"}
+        return f"[{self.modo} · {nombres[self.motor]}{' + web' if self.web else ''}]"
+
+
+def preferencia() -> str:
+    return os.environ.get("ARKCROW_PREFERENCIA", "auto").lower()
+
+
+def decidir(pregunta: str, fuentes: list[dict], forzar: str | None = None, confirmar=None) -> Decision:
+    """forzar: None | 'nube' | 'local'. confirmar(texto) -> bool, para datos confidenciales."""
+    online = hay_internet()
+    local = llm.elegir_modelo()
+    nube_ok = online and nube.configurada()
+    modo = "ONLINE" if online else "OFFLINE"
+    pref = forzar or preferencia()
+
+    quiere_nube = nube_ok and (pref == "nube" or (pref == "auto" and (not local or PESADO.search(pregunta))))
+    if pref == "local" or not quiere_nube:
+        motivo = "preferencia local" if pref == "local" else ("sin internet" if not online else
+                 "sin clave de nube" if not nube.configurada() else "tarea ligera: modelo local")
+        return Decision(modo, "local" if local else "busqueda", local, motivo, fuentes)
+
+    # --- privacidad ---
+    conf = [f for f in fuentes if f.get("confidencial")]
+    pregunta_conf = bool(MARCA_CONF.search(pregunta))
+    if conf or pregunta_conf:
+        detalle = ", ".join(sorted({f["ruta"] for f in conf})) or "la pregunta menciona información confidencial"
+        texto = (f"Esta consulta usaría información CONFIDENCIAL ({detalle}). ¿Autoriza enviarla al servicio en la "
+                 "nube? (si/no)")
+        if confirmar and confirmar(texto):
+            return Decision(modo, "nube", nube.MODELO_NUBE, "autorizado por el usuario", fuentes,
+                            web=bool(PESADO.search(pregunta)), aviso_privacidad="Envío de información confidencial AUTORIZADO.")
+        limpias = [f for f in fuentes if not f.get("confidencial")]
+        if pregunta_conf or not limpias:
+            return Decision(modo, "local" if local else "busqueda", local, "confidencial sin autorización: se queda local",
+                            fuentes, aviso_privacidad="No se envió nada a la nube (información confidencial).")
+        return Decision(modo, "nube", nube.MODELO_NUBE, "nube SIN los documentos confidenciales", limpias,
+                        web=bool(PESADO.search(pregunta)),
+                        aviso_privacidad=f"Se excluyeron {len(conf)} fragmento(s) confidencial(es) del envío a la nube.")
+    return Decision(modo, "nube", nube.MODELO_NUBE, "tarea pesada o sin modelo local", fuentes,
+                    web=bool(PESADO.search(pregunta)))

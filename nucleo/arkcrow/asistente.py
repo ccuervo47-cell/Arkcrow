@@ -13,7 +13,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import conocimiento, llm, memoria
+from . import cola as cola_mod
+from . import conocimiento, enrutador, llm, memoria, nube
 
 RAIZ = Path(__file__).resolve().parents[2]
 COLA = RAIZ / "datos" / "cola.json"
@@ -27,10 +28,7 @@ def reglas_agente() -> str:
 
 
 def pendientes_cola() -> list[dict]:
-    try:
-        return [t for t in json.loads(COLA.read_text(encoding="utf-8")) if t.get("estado") == "pendiente"]
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
+    return cola_mod.listar("pendiente")
 
 
 NORMAS = [
@@ -59,53 +57,66 @@ def normas_faltantes(pregunta: str, con) -> list[str]:
 
 
 @dataclass
-class Modo:
-    nombre: str          # "OFFLINE" | "ONLINE"
-    motor: str           # "modelo local qwen2.5:7b" | "solo búsqueda" | ...
-    modelo: str | None = None
-
-    def etiqueta(self) -> str:
-        return f"[{self.nombre} · {self.motor}]"
-
-
-def detectar_modo() -> Modo:
-    modelo = llm.elegir_modelo()
-    if modelo:
-        return Modo("OFFLINE", f"modelo local {modelo}", modelo)
-    return Modo("OFFLINE", "solo búsqueda en la base local (sin modelo instalado)")
-
-
-@dataclass
 class Respuesta:
     texto: str
-    modo: Modo
+    decision: "enrutador.Decision"
     fuentes: list[dict] = field(default_factory=list)
     segundos: float = 0.0
+    sugerir_cola: bool = False
+    aviso_modo: str = ""
 
     def mostrar(self) -> str:
-        return f"{self.modo.etiqueta()}\n{self.texto}\n\n({self.segundos:.1f} s)"
+        cab = (self.aviso_modo + "\n" if self.aviso_modo else "") + self.decision.etiqueta()
+        if self.decision.aviso_privacidad:
+            cab += f"\n🔒 {self.decision.aviso_privacidad}"
+        return f"{cab}\n{self.texto}\n\n({self.segundos:.1f} s)"
+
+
+def estado_modo() -> str:
+    online = enrutador.hay_internet()
+    local = llm.elegir_modelo()
+    partes = ["ONLINE" if online else "OFFLINE"]
+    partes.append(f"modelo local {local}" if local else "sin modelo local (solo búsqueda)")
+    if online:
+        partes.append(f"nube {nube.MODELO_NUBE}" if nube.configurada() else "nube sin clave (.env)")
+    return "[" + " · ".join(partes) + "]"
 
 
 class Asistente:
-    def __init__(self):
+    def __init__(self, confirmar=None):
         self.memoria = memoria.cargar()
         self.historial: list[dict] = []
         self.con = conocimiento.conectar()
+        self.confirmar = confirmar           # función(texto) -> bool para autorizar envíos confidenciales
+        self.ultimo_online = enrutador.hay_internet()
 
     # ------------------------------------------------------------ sesión
     def bienvenida(self) -> str:
-        modo = detectar_modo()
         obra = memoria.obra_activa() or "(ninguna; use /obra <nombre>)"
         cola = pendientes_cola()
         props = memoria.pendientes()
-        L = [f"ARKCROW OBRA {modo.etiqueta()}", f"Obra activa: {obra}"]
+        L = [f"ARKCROW OBRA {estado_modo()}", f"Obra activa: {obra}"]
         L.append(f"Cola 'cuando haya internet': {len(cola)} pendiente(s)" +
-                 ("".join(f"\n  - {t.get('descripcion', t)}" for t in cola[:5]) if cola else ""))
+                 ("".join(f"\n  - [{t['id']}] {t.get('descripcion', t)}" for t in cola[:5]) if cola else ""))
+        if cola and self.ultimo_online:
+            L.append("  Hay internet: revise con /cola y apruebe lo que quiera ejecutar (/aprobar <id>, /ejecutar).")
         if props:
             L.append(f"Propuestas de memoria por confirmar: {len(props)} (use /memoria)")
         n = self.con.execute("SELECT COUNT(*) FROM docs").fetchone()[0]
         L.append(f"Base de conocimiento: {n} documento(s) indexado(s).")
         return "\n".join(L)
+
+    def cambio_de_modo(self) -> str:
+        """Devuelve un aviso si la conectividad cambió desde la última consulta."""
+        ahora = enrutador.hay_internet()
+        if ahora == self.ultimo_online:
+            return ""
+        self.ultimo_online = ahora
+        if ahora:
+            n = len(pendientes_cola())
+            return ("🔄 CAMBIO DE MODO: ahora ONLINE." +
+                    (f" Hay {n} tarea(s) en la cola 'cuando haya internet' (vea /cola)." if n else ""))
+        return "🔄 CAMBIO DE MODO: ahora OFFLINE (sin internet). Respondo con el modelo local y la base local."
 
     # ------------------------------------------------------------ respuesta
     def _contexto_memoria(self) -> str:
@@ -118,35 +129,63 @@ class Asistente:
             total += len(bloque)
         return "\n".join(partes)
 
-    def responder(self, pregunta: str, k: int = 6) -> Respuesta:
+    def _sistema(self, faltan) -> str:
+        return (f"{reglas_agente()}\n\n# MEMORIA DEL USUARIO\n{self._contexto_memoria()}\n\n"
+                "# INSTRUCCIONES DE RESPUESTA\n"
+                "Responde con base en la memoria y en los FRAGMENTOS de la base local. Cita cada dato con la "
+                "etiqueta exacta del fragmento, por ejemplo [memoria/empresa.md, sección «...»]. Si los fragmentos "
+                "no contienen la respuesta, di 'No tengo ese dato en la base local' y sugiere qué documento agregar. "
+                "Si usas búsqueda web, cita la URL y distingue claramente lo que viene de la web."
+                + (f" NO tienes en la base local: {', '.join(faltan)}. No cites artículos ni valores de esas normas "
+                   "de memoria." if faltan else ""))
+
+    def responder(self, pregunta: str, k: int = 6, forzar: str | None = None) -> Respuesta:
         t0 = time.time()
-        modo = detectar_modo()
+        aviso_modo = self.cambio_de_modo()
         fuentes = conocimiento.buscar(pregunta, k=k, con=self.con)
         faltan = normas_faltantes(pregunta, self.con)
+        d = enrutador.decidir(pregunta, fuentes, forzar=forzar, confirmar=self.confirmar)
         aviso = (f"⚠ No tengo {', '.join(faltan)} en la base local, así que no puedo citarla. Agregue el PDF oficial a "
                  "conocimiento/normas/ (ver LEEME.md) y reindexe; mientras tanto, cualquier dato sobre esa norma "
                  "sería de memoria y NO verificado.\n\n") if faltan else ""
-        if modo.modelo:
+        sugerir = d.modo == "OFFLINE" and bool(enrutador.PESADO.search(pregunta))
+        texto = None
+        if d.motor == "nube":
             try:
-                texto = aviso + self._con_modelo(pregunta, fuentes, modo.modelo, faltan)
+                texto = aviso + self._con_nube(pregunta, d, faltan)
+            except nube.NubeNoDisponible as e:
+                d = enrutador.Decision(d.modo, "local" if llm.elegir_modelo() else "busqueda", llm.elegir_modelo(),
+                                       f"la nube falló: {e}", fuentes)
+                aviso = f"(La nube no respondió: {e} Uso el modo local.)\n\n" + aviso
+        if texto is None and d.motor == "local":
+            try:
+                texto = aviso + self._con_modelo(pregunta, fuentes, d.modelo, faltan)
             except llm.OllamaNoDisponible:
-                modo = Modo("OFFLINE", "solo búsqueda (el modelo local no respondió)")
-                texto = aviso + self._extractiva(fuentes)
-        else:
+                d = enrutador.Decision(d.modo, "busqueda", None, "el modelo local no respondió", fuentes)
+        if texto is None:
             texto = aviso + self._extractiva(fuentes)
-        return Respuesta(texto, modo, fuentes, time.time() - t0)
+        if sugerir:
+            texto += ("\n\n💡 Esta consulta parece necesitar internet. Puedo dejarla en la cola 'cuando haya "
+                      "internet' (/encolar).")
+        return Respuesta(texto, d, fuentes, time.time() - t0, sugerir, aviso_modo)
+
+    def _mensajes(self, pregunta, fuentes) -> list[dict]:
+        frag = "\n\n".join(f"{f['cita']}\n{f['texto']}" for f in fuentes) or "(no se encontraron fragmentos)"
+        return self.historial[-6:] + [
+            {"role": "user", "content": f"FRAGMENTOS DE LA BASE LOCAL:\n{frag}\n\nPREGUNTA: {pregunta}"}]
+
+    def _con_nube(self, pregunta, d, faltan) -> str:
+        r = nube.preguntar(self._sistema(faltan), self._mensajes(pregunta, d.fuentes), web=d.web)
+        texto = r.texto
+        if r.fuentes_web:
+            texto += "\n\nFuentes web:\n" + "\n".join(f"- {f['titulo']}: {f['url']}" for f in r.fuentes_web[:8])
+        if r.modelo and r.modelo != d.modelo:
+            d.modelo = r.modelo
+        self.historial += [{"role": "user", "content": pregunta}, {"role": "assistant", "content": texto}]
+        return texto
 
     def _con_modelo(self, pregunta, fuentes, modelo, faltan=()) -> str:
-        frag = "\n\n".join(f"{f['cita']}\n{f['texto']}" for f in fuentes) or "(no se encontraron fragmentos)"
-        sistema = (f"{reglas_agente()}\n\n# MEMORIA DEL USUARIO\n{self._contexto_memoria()}\n\n"
-                   "# INSTRUCCIONES DE RESPUESTA\n"
-                   "Responde SOLO con base en la memoria y en los FRAGMENTOS de abajo. Cita cada dato con la "
-                   "etiqueta exacta del fragmento, por ejemplo [memoria/empresa.md, sección «...»]. Si los fragmentos "
-                   "no contienen la respuesta, di 'No tengo ese dato en la base local' y sugiere qué documento agregar."
-                   + (f" NO tienes en la base local: {', '.join(faltan)}. No cites artículos ni valores de esas normas."
-                      if faltan else ""))
-        mensajes = [{"role": "system", "content": sistema}] + self.historial[-6:] + [
-            {"role": "user", "content": f"FRAGMENTOS DE LA BASE LOCAL:\n{frag}\n\nPREGUNTA: {pregunta}"}]
+        mensajes = [{"role": "system", "content": self._sistema(faltan)}] + self._mensajes(pregunta, fuentes)
         texto = llm.chat(mensajes, modelo=modelo)
         if fuentes and not re.search(r"\[[^\]]+,\s*[^\]]+\]", texto):
             texto += "\n\nFuentes consultadas: " + "; ".join(dict.fromkeys(f["cita"] for f in fuentes[:3]))

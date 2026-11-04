@@ -115,12 +115,15 @@ class TestConocimiento(unittest.TestCase):
 
 class TestAsistenteOffline(unittest.TestCase):
     def test_responde_aiu_con_cita_y_modo(self):
+        import os
+        from unittest import mock
         conocimiento.indexar(verbose=False, embeddings=False)
-        a = asistente.Asistente()
-        t0 = time.time()
-        r = a.responder("¿Qué AIU usa la empresa?")
+        with mock.patch.dict(os.environ, {"ARKCROW_FORZAR_OFFLINE": "1"}):
+            a = asistente.Asistente()
+            t0 = time.time()
+            r = a.responder("¿Qué AIU usa la empresa?")
         self.assertLess(time.time() - t0, 30)
-        self.assertEqual(r.modo.nombre, "OFFLINE")
+        self.assertEqual(r.decision.modo, "OFFLINE")
         self.assertIn("[OFFLINE", r.mostrar())
         self.assertIn("13 %", r.texto)
         self.assertIn("[memoria/empresa.md", r.texto)
