@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+from contextlib import closing
 import sys
 import tempfile
 import zipfile
@@ -44,7 +45,8 @@ def hacer() -> Path:
     marca = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     final = destino() / f"arkcrow_respaldo_{marca}.zip"
     tmp_zip = final.with_suffix(".zip.tmp")
-    with tempfile.TemporaryDirectory() as tmp, zipfile.ZipFile(tmp_zip, "w", zipfile.ZIP_DEFLATED) as z:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp, \
+            zipfile.ZipFile(tmp_zip, "w", zipfile.ZIP_DEFLATED) as z:
         for carpeta in CARPETAS:
             for f in sorted((RAIZ / carpeta).rglob("*")):
                 if f.is_file() and not any(x in str(f) for x in EXCLUIR):
@@ -53,7 +55,8 @@ def hacer() -> Path:
             origen = RAIZ / rel
             if origen.exists():
                 copia = Path(tmp) / origen.name
-                with sqlite3.connect(origen) as src, sqlite3.connect(copia) as dst:
+                # cerrar SIEMPRE las conexiones: en Windows un archivo abierto no se puede borrar
+                with closing(sqlite3.connect(origen)) as src, closing(sqlite3.connect(copia)) as dst:
                     src.backup(dst)
                 z.write(copia, rel)
         for rel in EXTRAS:
@@ -77,11 +80,11 @@ def verificar(zip_path: Path) -> list[str]:
         nombres = set(z.namelist())
         if not any(n.startswith("memoria/") for n in nombres):
             problemas.append("no contiene memoria/")
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             for rel in BASES:
                 if rel in nombres:
                     p = Path(z.extract(rel, tmp))
-                    with sqlite3.connect(p) as c:
+                    with closing(sqlite3.connect(p)) as c:
                         if c.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                             problemas.append(f"base dañada: {rel}")
     return problemas
@@ -111,7 +114,11 @@ if __name__ == "__main__":
     if cmd == "hacer":
         print(f"Respaldo verificado: {hacer()}")
     elif cmd == "si-toca":
-        r = si_toca()
+        try:
+            r = si_toca()
+        except Exception as e:  # noqa: BLE001  (un respaldo fallido no debe impedir abrir el programa)
+            print(f"⚠ No se pudo hacer el respaldo diario: {e}")
+            sys.exit(0)
         print(f"Respaldo verificado: {r}" if r else f"Respaldo al día (último: {ultimo():%d/%m/%Y %H:%M}).")
     elif cmd == "listar":
         for f in listar():

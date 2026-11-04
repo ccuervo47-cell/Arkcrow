@@ -10,6 +10,11 @@ if not exist ".venv\Scripts\python.exe" (
   pause
   exit /b 1
 )
+if not exist "nucleo\arkcrow\web.py" (
+  echo Faltan archivos del programa en nucleo\arkcrow. Copie de nuevo la actualizacion completa.
+  pause
+  exit /b 1
+)
 rem Arranca el motor local si no esta corriendo
 tasklist /FI "IMAGENAME eq ollama.exe" 2>nul | find /I "ollama.exe" >nul
 if errorlevel 1 (
