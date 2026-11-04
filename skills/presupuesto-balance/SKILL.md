@@ -22,6 +22,21 @@ description: Armar el balance/presupuesto enlazado con fórmulas a memorias y AP
    - Las **OBSERVACIONES TÉCNICAS** se consultan con él antes de cambiar el alcance.
 4. Para auditar un Excel hecho a mano: `python skills/presupuesto-balance/scripts/auditar.py <archivo.xlsx>`.
 
+## Formato UNAD F-14-3-5 (APU, BALANCE, PRECIOS y FORMATO)
+Para auditar un libro en ese formato:
+`python -m arkcrow.auditor_unad APUS.xlsx [--dxf plano.dxf] --salida proyectos/<obra>/salidas`
+
+**Qué detecta:**
+- objeto del encabezado que no corresponde al presupuesto;
+- ítems sin APU;
+- APU que no calculan (insumos que faltan en PRECIOS) o que se copiaron de otro proyecto;
+- hojas sobrantes;
+- costo directo calculado con `/2`;
+- prestaciones, herramienta menor fuera del 5–10 % de la MO, rendimientos "cuadrados" y transporte global;
+- unidades sospechosas.
+
+Con `--dxf` cruza las cantidades del presupuesto contra las capas y bloques del plano, solo cuando la unidad coincide. Genera el reporte `.md` y un Excel con las hojas HALLAZGOS, ITEMS y CRUCE PLANO.
+
 ## Qué revisa el auditor (memoria/lecciones.md)
 - **R0** errores de fórmula.
 - **R1** balance enlazado y sin ceros.

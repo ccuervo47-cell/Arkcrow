@@ -76,6 +76,25 @@ def _area_hatch(e) -> float:
     return abs(total)
 
 
+def _nombre_real(doc, nombre: str, cache: dict) -> str:
+    """Los bloques dinámicos aparecen como '*U123'; su nombre real está en el registro del bloque (AcDbBlockRepBTag)."""
+    if not nombre.startswith("*U"):
+        return nombre
+    if nombre not in cache:
+        real = nombre
+        try:
+            br = doc.block_records.get(nombre)
+            for t in br.get_xdata("AcDbBlockRepBTag"):
+                if t.code == 1005:
+                    e = doc.entitydb.get(t.value)
+                    if e is not None and getattr(e.dxf, "name", None):
+                        real = e.dxf.name
+        except Exception:  # noqa: BLE001  (bloque anónimo sin dato del original: se deja el nombre interno)
+            pass
+        cache[nombre] = real
+    return cache[nombre]
+
+
 def leer(ruta: str | Path, unidades: str | None = None, capas: str | None = None) -> dict:
     from ezdxf import bbox
     from ezdxf import path as zpath
@@ -97,6 +116,7 @@ def leer(ruta: str | Path, unidades: str | None = None, capas: str | None = None
     por_capa: dict[str, dict] = defaultdict(lambda: {"ml": 0.0, "m2": 0.0, "bloques": defaultdict(int), "textos": [],
                                                      "cotas": [], "abiertas_largas": 0, "n": 0})
     no_soportadas = defaultdict(int)
+    nombres: dict = {}
     for e in msp:
         capa = e.dxf.get("layer", "0")
         if filtro and not filtro.search(capa):
@@ -130,7 +150,7 @@ def leer(ruta: str | Path, unidades: str | None = None, capas: str | None = None
             elif t == "HATCH":
                 c["m2_sombreado"] = c.get("m2_sombreado", 0.0) + _area_hatch(e) * f * f
             elif t == "INSERT":
-                c["bloques"][e.dxf.name] += 1
+                c["bloques"][_nombre_real(doc, e.dxf.name, nombres)] += 1
             elif t in ("TEXT", "MTEXT"):
                 txt = (e.plain_text() if t == "MTEXT" else e.dxf.text).strip()
                 if txt:
