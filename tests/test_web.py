@@ -68,6 +68,27 @@ class TestWeb(unittest.TestCase):
             self._post("/api/chat", {"pregunta": "x"}, host="atacante.com")
         self.assertEqual(c.exception.code, 403)
 
+    def test_subir_documento_e_indexar(self):
+        import base64
+        contenido = "Especificación de prueba: el adoquín del bicicletero será de 20x10x6 cm zafirokwal.".encode()
+        destino = RAIZ / "conocimiento" / "obras" / "zz-prueba-subida"
+        try:
+            r = self._post("/api/subir", {"nombre": "espec.txt", "destino": "obras/zz-prueba-subida",
+                                          "datos": "data:text/plain;base64," + base64.b64encode(contenido).decode()})
+            self.assertEqual(r["guardado"], "conocimiento/obras/zz-prueba-subida/espec.txt")
+            r2 = self._post("/api/subir", {"nombre": "espec.txt", "destino": "obras/zz-prueba-subida",
+                                           "datos": base64.b64encode(contenido).decode()})
+            self.assertTrue(r2["guardado"].endswith("espec_2.txt"), "no debe sobrescribir")
+            chat = self._post("/api/chat", {"pregunta": "adoquín zafirokwal"})
+            self.assertIn("zz-prueba-subida/espec", chat["texto"])
+            for malo in ({"nombre": "virus.exe", "destino": "normas"}, {"nombre": "a.txt", "destino": "../../AGENTS"}):
+                with self.assertRaises(urllib.error.HTTPError):
+                    self._post("/api/subir", {**malo, "datos": "eA=="})
+        finally:
+            import shutil
+            shutil.rmtree(destino, ignore_errors=True)
+            self._post("/api/indexar", {})
+
     def test_solo_escucha_en_localhost(self):
         self.assertEqual(self.srv.server_address[0], "127.0.0.1")
 

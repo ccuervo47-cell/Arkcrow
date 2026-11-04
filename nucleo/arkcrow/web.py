@@ -44,6 +44,33 @@ class App:
                 "privacidad": r.decision.aviso_privacidad, "texto": r.texto, "segundos": round(r.segundos, 1),
                 "sugerir_cola": r.sugerir_cola}
 
+    def subir(self, nombre: str, destino: str, datos_b64: str) -> dict:
+        """Guarda un archivo en conocimiento/<destino>/ (nunca sobrescribe) y reindexa."""
+        import base64
+        import re
+        from pathlib import Path
+        from .conocimiento import EXTENSIONES, RAIZ
+        nombre = Path(nombre).name
+        if Path(nombre).suffix.lower() not in EXTENSIONES:
+            raise ValueError(f"Formato no soportado: {nombre}. Use PDF, Word (.docx), Excel (.xlsx), .txt, .md o .csv")
+        destino = destino.strip().strip("/\\")
+        if not re.fullmatch(r"(normas|empresa|precios|confidencial|obras/[a-z0-9][a-z0-9._-]{0,60})", destino):
+            raise ValueError("Destino no válido")
+        contenido = base64.b64decode(datos_b64.split(",", 1)[-1])
+        if len(contenido) > 80 * 1024 * 1024:
+            raise ValueError("El archivo supera 80 MB")
+        carpeta = RAIZ / "conocimiento" / destino
+        carpeta.mkdir(parents=True, exist_ok=True)
+        final, n = carpeta / nombre, 2
+        while final.exists():
+            final = carpeta / f"{Path(nombre).stem}_{n}{Path(nombre).suffix}"
+            n += 1
+        final.write_bytes(contenido)
+        with self.lock:
+            r = conocimiento.indexar(self.asistente.con, verbose=False)
+        return {"guardado": final.relative_to(RAIZ).as_posix(), "fragmentos": r["fragmentos"],
+                "confidencial": destino == "confidencial"}
+
     def estado(self) -> dict:
         with self.lock:
             n = self.asistente.con.execute("SELECT COUNT(*) FROM docs").fetchone()[0]
@@ -107,6 +134,8 @@ def crear_manejador(app: App, puerto: int):
                 if self.path == "/api/cola/ejecutar":
                     return self._json({"hechas": cola.ejecutar_aprobadas(lambda: enrutador.hay_internet(forzar=True)),
                                        "online": enrutador.hay_internet()})
+                if self.path == "/api/subir":
+                    return self._json(app.subir(datos.get("nombre", ""), datos.get("destino", ""), datos.get("datos", "")))
                 if self.path == "/api/indexar":
                     with app.lock:
                         return self._json(conocimiento.indexar(app.asistente.con, verbose=False))
@@ -175,6 +204,13 @@ aside h2{font-size:14px;margin:4px 0 8px;color:var(--azul)}.t{border:1px solid v
 <aside><h2>Cola "cuando haya internet"</h2><div id="cola" class="small">—</div>
 <button class="sec" id="encolar" type="button">+ Encolar última pregunta</button>
 <button class="sec" id="ejecutar" type="button">Ejecutar aprobadas</button>
+<h2 style="margin-top:16px">Subir documentos</h2>
+<select id="destino" style="width:100%;padding:6px;margin-bottom:6px">
+<option value="obras">Documento de la obra activa</option><option value="normas">Norma</option>
+<option value="confidencial">Confidencial (nunca sale del equipo)</option><option value="empresa">Formato de la empresa</option>
+<option value="precios">Precios</option></select>
+<input type="file" id="archivo" multiple accept=".pdf,.docx,.xlsx,.txt,.md,.csv" style="width:100%;font-size:12px">
+<div id="subiendo" class="small"></div>
 <h2 style="margin-top:16px">Base de conocimiento</h2><div id="docs" class="small"></div>
 <button class="sec" id="indexar" type="button">Reindexar documentos</button>
 <p class="small">Todo corre en este equipo. Costo cero: sin servicios de pago.</p></aside>
@@ -187,7 +223,7 @@ const enl=t=>esc(t).replace(/(https?:\/\/[^\s)\]]+)/g,'<a href="$1" target="_bla
 async function api(ruta,datos){const r=await fetch(ruta,datos===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(datos)});return r.json()}
 function msg(cls,html){const d=document.createElement('div');d.className='m '+cls;d.innerHTML=html;$('#msgs').appendChild(d);$('#msgs').scrollTop=1e9;return d}
 async function estado(){const e=await api('/api/estado');$('#modo').textContent=e.modo;$('#modo').className='chip '+(e.online?'on':'off');
-$('#obra').textContent='Obra activa: '+e.obra;$('#docs').textContent=e.documentos+' documento(s) indexado(s)';
+$('#obra').textContent='Obra activa: '+e.obra;obraActiva=e.obra.startsWith('(')?'':e.obra;$('#docs').textContent=e.documentos+' documento(s) indexado(s)';
 $('#cola').innerHTML=e.cola.length?e.cola.map(t=>`<div class="t"><b>${esc(t.estado.toUpperCase())}</b> ${esc(t.descripcion)}<br>
 ${t.estado==='pendiente'?`<button class="sec" onclick="accion('aprobar','${t.id}')">Aprobar</button> <button class="sec" onclick="accion('descartar','${t.id}')">Descartar</button>`:esc(String(t.resultado||''))}</div>`).join(''):'Sin tareas pendientes.'}
 async function accion(a,id){await api('/api/cola/'+a,{id});estado()}
@@ -202,6 +238,14 @@ $('#q').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#f'
 $('#encolar').onclick=async()=>{await api('/api/encolar',{});estado()};
 $('#ejecutar').onclick=async()=>{const r=await api('/api/cola/ejecutar',{});msg('a',r.online?`Ejecutadas: ${r.hechas.length}`:'Sin internet: se ejecutarán cuando haya conexión.');estado()};
 $('#indexar').onclick=async()=>{const r=await api('/api/indexar',{});msg('a','Índice actualizado: '+r.fragmentos+' fragmentos.');estado()};
+let obraActiva='';
+$('#archivo').onchange=async e=>{const files=[...e.target.files];let d=$('#destino').value;
+if(d==='obras')d='obras/'+(obraActiva||'general').toLowerCase().replace(/[^a-z0-9._-]+/g,'-');
+for(const f of files){$('#subiendo').textContent='Subiendo '+f.name+'…';
+const b64=await new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result);r.readAsDataURL(f)});
+const r=await api('/api/subir',{nombre:f.name,destino:d,datos:b64});
+msg('a',r.error?'⚠ '+esc(r.error):`📄 Guardado en <code>${esc(r.guardado)}</code>${r.confidencial?' (CONFIDENCIAL)':''} y indexado (${r.fragmentos} fragmentos en total). Ya puede preguntarme sobre él.`)}
+$('#subiendo').textContent='';e.target.value='';estado()};
 estado();setInterval(estado,30000);
 msg('a','Hola, Cristian. Pregúnteme por APU, cantidades, normas de la base local o la obra activa.');
 </script></body></html>"""
