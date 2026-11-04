@@ -119,6 +119,9 @@ def tabla(doc, encabezados: list[str], filas: list[list], anchos_cm: list[float]
             r = celdas[i].paragraphs[0].add_run("" if v is None else str(v))
             r.font.size = Pt(tam)
     if anchos_cm:
+        t.autofit = False
+        for i, w in enumerate(anchos_cm):
+            t.columns[i].width = Cm(w)
         for fila in t.rows:
             for i, w in enumerate(anchos_cm):
                 fila.cells[i].width = Cm(w)

@@ -71,6 +71,28 @@ class TestApuUnad(unittest.TestCase):
         wv = load_workbook(recalcular(salida), data_only=True)
         self.assertAlmostEqual(wv["2.3"]["M61"].value, 0.11 * 85000 + 0.5 * 2100, places=1)
 
+    def test_proceso_de_cotizacion(self):
+        from openpyxl import load_workbook
+        from arkcrow import cotizaciones
+        filas = cotizaciones.necesidades(self.tmp / "oficial.xlsx", SPEC)
+        abono = next(f for f in filas if f["insumo"] == "Abono")
+        self.assertAlmostEqual(abono["cantidad"], 0.5 * 4000)          # 0,5 kg/m² × 4.000 m² del ítem 2.3
+        self.assertEqual(abono["categoria"], "Vivero y jardinería")
+        x = cotizaciones.libro(filas, self.tmp / "comp.xlsx", "Prueba")
+        wb = load_workbook(x)
+        ws = wb["COMPARATIVO"]
+        r = next(i for i in range(5, ws.max_row + 1) if ws.cell(i, 2).value == "Abono")
+        ws.cell(r, 7, "Vivero A"); ws.cell(r, 8, 1800); ws.cell(r, 9, "Vivero B"); ws.cell(r, 10, 1650)
+        wb.save(x)
+        v = load_workbook(recalcular(x), data_only=True)["COMPARATIVO"]
+        self.assertEqual(v.cell(r, 13).value, 1650)
+        self.assertEqual(v.cell(r, 14).value, "Vivero B")
+        self.assertEqual(v.cell(r, 15).value, round(2000 * 1650))
+        elegidas = cotizaciones.desde_comparativo(x)
+        self.assertEqual(elegidas["Abono"]["proveedor"], "Vivero B")
+        docs = cotizaciones.solicitudes(filas, self.tmp / "sol", "Prueba", "Corozal, Sucre", {"nombre": "Arq. X"})
+        self.assertTrue(all(d.exists() and d.with_suffix(".txt").exists() for d in docs))
+
     def test_insumo_inexistente_falla(self):
         malo = {**SPEC, "apus": [{"item": "2.3", "eq": [], "mat": [["No existe", 1]], "mo": []}]}
         with self.assertRaises(KeyError):

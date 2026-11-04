@@ -67,8 +67,9 @@ def construir(oficial: str | Path, spec: dict, salida: str | Path) -> Path:
             else:
                 precios["MO"].append([fila[0], None, fila[1], fuente])
     pesos = dict(spec.get("pesos_existentes", {}))
+    web = spec.get("referencias_web", {})
     for d, u, pr, peso in spec["precios_nuevos"]["MAT"]:
-        precios["MAT"].append([d, u, pr, fuente])
+        precios["MAT"].append([d, u, pr, f"REFERENCIA WEB: {web[d]}" if d in web else fuente])
         pesos[d] = peso
     for k in precios:                       # las cotizaciones reemplazan supuestos y precios oficiales
         for fila in precios[k]:
@@ -154,8 +155,8 @@ def _leeme(ws, spec):
         ("APU COMPLEMENTARIOS - GENERADOS POR ARKCROW", True),
         ("Libro APARTE del formato oficial F-14-3-5: el oficial tiene logos, casillas y cuadros de texto que no se "
          "deben alterar. Las hojas de APU conservan las mismas filas y columnas del formato oficial.", False),
-        ("Precios con fondo amarillo = SUPUESTO ARKCROW (mercado estimado 2026): COTIZAR. Fondo verde = COTIZACIÓN del "
-         "usuario (proveedor y fecha en el comentario de la celda).", False),
+        ("Precios con fondo amarillo = SUPUESTO ARKCROW (mercado estimado 2026): COTIZAR. Fondo azul = REFERENCIA WEB "
+         "(precio publicado en internet, fuente en el comentario). Fondo verde = COTIZACIÓN del usuario.", False),
         ("Rendimientos (columna K) en días por unidad, como el formato UNAD. Herramienta menor = 5 % de la mano de obra.", False),
         (f"Prestaciones = {spec.get('prestaciones', 0.94):.0%} del jornal, igual que los APU oficiales (R&C usa 52 %: confirmar).", False),
         ("Transporte: fracción de viaje según el peso de los materiales; los materiales 'puestos en obra' lo incluyen.", False),
@@ -184,7 +185,10 @@ def _hoja_precios(ws, precios) -> dict:
             if cu:
                 _c(ws, f"{cu}{r}", u, F_NORMAL)
             celda = _c(ws, f"{cp}{r}", p, Font(name="Arial", size=9, color="0000FF"), MONEDA)
-            if fuente.startswith("COTIZACIÓN"):
+            if fuente.startswith("REFERENCIA WEB"):
+                celda.fill = PatternFill("solid", fgColor="DDEBF7")
+                celda.comment = Comment(fuente + " (referencia, no es cotización formal)", "ARKCROW")
+            elif fuente.startswith("COTIZACIÓN"):
                 celda.fill = PatternFill("solid", fgColor="C6EFCE")
                 celda.comment = Comment(fuente, "ARKCROW")
             elif fuente != "PRECIOS oficial":
