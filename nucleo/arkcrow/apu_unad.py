@@ -14,7 +14,10 @@ Convenciones:
   - Transporte: fracción de viaje = Σ(cantidad × peso en t) / capacidad del camión; los materiales "puestos en obra"
     se marcan como transporte incluido.
 
-Uso: python -m arkcrow.apu_unad OFICIAL.xlsx especificacion.json salida.xlsx
+Uso:
+  python -m arkcrow.apu_unad OFICIAL.xlsx especificacion.json salida.xlsx          (genera los APU)
+  python -m arkcrow.apu_unad plantilla OFICIAL.xlsx especificacion.json plantilla.xlsx   (para llenar cotizaciones)
+  python -m arkcrow.apu_unad cotizar especificacion.json cotizaciones_llenas.xlsx   (guarda las cotizaciones)
 """
 from __future__ import annotations
 
@@ -56,6 +59,7 @@ def leer_oficial(ruta: Path) -> tuple[dict, dict]:
 def construir(oficial: str | Path, spec: dict, salida: str | Path) -> Path:
     items, precios = leer_oficial(Path(oficial))
     fuente = spec.get("fuente_supuesto", "SUPUESTO - cotizar")
+    cotizados = {_k(d): c for d, c in spec.get("cotizaciones", {}).items()}
     for k in ("EQ", "MO"):
         for fila in spec["precios_nuevos"].get(k, []):
             if k == "EQ":
@@ -66,6 +70,12 @@ def construir(oficial: str | Path, spec: dict, salida: str | Path) -> Path:
     for d, u, pr, peso in spec["precios_nuevos"]["MAT"]:
         precios["MAT"].append([d, u, pr, fuente])
         pesos[d] = peso
+    for k in precios:                       # las cotizaciones reemplazan supuestos y precios oficiales
+        for fila in precios[k]:
+            c = cotizados.get(_k(fila[0]))
+            if c:
+                fila[2] = c["precio"]
+                fila[3] = f"COTIZACIÓN {c.get('proveedor', '')} {c.get('fecha', '')}".strip()
     nombres = {k: {_k(f[0]) for f in v} for k, v in precios.items()}
     for a in spec["apus"]:   # todo insumo usado debe existir en PRECIOS
         for sec, clave in (("eq", "EQ"), ("mat", "MAT"), ("mo", "MO")):
@@ -144,7 +154,8 @@ def _leeme(ws, spec):
         ("APU COMPLEMENTARIOS - GENERADOS POR ARKCROW", True),
         ("Libro APARTE del formato oficial F-14-3-5: el oficial tiene logos, casillas y cuadros de texto que no se "
          "deben alterar. Las hojas de APU conservan las mismas filas y columnas del formato oficial.", False),
-        ("Precios con fondo amarillo y comentario = SUPUESTO ARKCROW (mercado estimado 2026). COTIZAR antes de presentar.", False),
+        ("Precios con fondo amarillo = SUPUESTO ARKCROW (mercado estimado 2026): COTIZAR. Fondo verde = COTIZACIÓN del "
+         "usuario (proveedor y fecha en el comentario de la celda).", False),
         ("Rendimientos (columna K) en días por unidad, como el formato UNAD. Herramienta menor = 5 % de la mano de obra.", False),
         (f"Prestaciones = {spec.get('prestaciones', 0.94):.0%} del jornal, igual que los APU oficiales (R&C usa 52 %: confirmar).", False),
         ("Transporte: fracción de viaje según el peso de los materiales; los materiales 'puestos en obra' lo incluyen.", False),
@@ -173,7 +184,10 @@ def _hoja_precios(ws, precios) -> dict:
             if cu:
                 _c(ws, f"{cu}{r}", u, F_NORMAL)
             celda = _c(ws, f"{cp}{r}", p, Font(name="Arial", size=9, color="0000FF"), MONEDA)
-            if fuente != "PRECIOS oficial":
+            if fuente.startswith("COTIZACIÓN"):
+                celda.fill = PatternFill("solid", fgColor="C6EFCE")
+                celda.comment = Comment(fuente, "ARKCROW")
+            elif fuente != "PRECIOS oficial":
                 celda.fill = AMARILLO
                 celda.comment = Comment(fuente, "ARKCROW")
     return {}
@@ -303,8 +317,86 @@ def _hoja_apu(ws, a, it, spec, pesos, fila_resumen):
     ws.print_area = "B30:P88"
 
 
+def plantilla_cotizaciones(oficial: str | Path, spec: dict, salida: str | Path) -> Path:
+    """Excel para llenar: insumos SUPUESTOS (y opcionalmente los oficiales) con columnas de cotización."""
+    _, precios = leer_oficial(Path(oficial))
+    usados = {_k(d) for a in spec["apus"] for sec in ("eq", "mat", "mo") for d, _ in a.get(sec, [])}
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "COTIZACIONES"
+    cab = ["Tipo", "Insumo (no cambiar el texto)", "Unidad", "Precio actual", "Origen del precio actual",
+           "PRECIO COTIZADO", "Proveedor", "Fecha (DD/MM/AAAA)", "Observación"]
+    for i, t in enumerate(cab, 1):
+        c = ws.cell(1, i, t)
+        c.font = Font(name="Arial", bold=True, color="FFFFFF")
+        c.fill = RELLENO_TITULO
+    filas = []
+    for d, u, p, *peso in spec["precios_nuevos"]["MAT"]:
+        filas.append(("Material", d, u, p, "SUPUESTO ARKCROW"))
+    for d, t, p in spec["precios_nuevos"].get("EQ", []):
+        filas.append(("Equipo", d, t, p, "SUPUESTO ARKCROW"))
+    for d, p in spec["precios_nuevos"].get("MO", []):
+        filas.append(("Mano de obra", d, "jornal", p, "SUPUESTO ARKCROW"))
+    nombres_nuevos = {_k(f[1]) for f in filas}
+    for clave, tipo in (("MAT", "Material"), ("EQ", "Equipo"), ("MO", "Mano de obra")):
+        for d, u, p, _ in precios[clave]:
+            if _k(d) in usados and _k(d) not in nombres_nuevos:
+                filas.append((tipo, d, u or "jornal", p, "PRECIOS oficial (usado en estos APU)"))
+    for r, f in enumerate(filas, 2):
+        for i, v in enumerate(f, 1):
+            ws.cell(r, i, v).font = Font(name="Arial", size=9)
+        ws.cell(r, 4).number_format = MONEDA
+        for col in (6, 7, 8, 9):
+            ws.cell(r, col).fill = AMARILLO
+        ws.cell(r, 6).number_format = MONEDA
+    for col, w in zip("ABCDEFGHI", [12, 62, 8, 14, 34, 16, 26, 16, 36]):
+        ws.column_dimensions[col].width = w
+    ws.freeze_panes = "C2"
+    ws["K1"] = "Llene solo las columnas amarillas. Deje vacío PRECIO COTIZADO si no tiene cotización de ese insumo."
+    ws["K1"].font = Font(name="Arial", size=9, italic=True)
+    wb.save(salida)
+    return Path(salida)
+
+
+def aplicar_cotizaciones(spec: dict, ruta_cotizaciones: str | Path) -> tuple[dict, list[str]]:
+    """Lee la plantilla llena y guarda las cotizaciones en la especificación. Devuelve (spec, avisos)."""
+    from datetime import date, datetime
+    wv = load_workbook(ruta_cotizaciones, data_only=True)["COTIZACIONES"]
+    cot, avisos = dict(spec.get("cotizaciones", {})), []
+    for r in range(2, wv.max_row + 1):
+        d, p_act, p = wv.cell(r, 2).value, wv.cell(r, 4).value, wv.cell(r, 6).value
+        if not d or p in (None, ""):
+            continue
+        if not isinstance(p, (int, float)) or p <= 0:
+            avisos.append(f"Fila {r} «{d}»: precio cotizado no válido ({p}); se ignora.")
+            continue
+        f = wv.cell(r, 8).value
+        fecha = f.strftime("%d/%m/%Y") if isinstance(f, (date, datetime)) else (str(f) if f else "")
+        if not wv.cell(r, 7).value:
+            avisos.append(f"Fila {r} «{d}»: falta el proveedor.")
+        if isinstance(p_act, (int, float)) and p_act and not (0.2 <= p / p_act <= 5):
+            avisos.append(f"«{d}»: la cotización ({p:,.0f}) difiere más de 5 veces del precio anterior ({p_act:,.0f}); "
+                          "revise unidad o ceros.")
+        cot[str(d).strip()] = {"precio": p, "proveedor": str(wv.cell(r, 7).value or ""), "fecha": fecha,
+                               "obs": str(wv.cell(r, 9).value or "")}
+    spec = {**spec, "cotizaciones": cot}
+    return spec, avisos
+
+
 def main(argv=None):
     a = argv or sys.argv[1:]
+    if a and a[0] == "plantilla":            # plantilla OFICIAL.xlsx spec.json salida.xlsx
+        spec = json.loads(Path(a[2]).read_text(encoding="utf-8"))
+        print(plantilla_cotizaciones(a[1], spec, a[3]))
+        return
+    if a and a[0] == "cotizar":              # cotizar spec.json cotizaciones.xlsx  (actualiza el JSON)
+        ruta = Path(a[1])
+        spec, avisos = aplicar_cotizaciones(json.loads(ruta.read_text(encoding="utf-8")), a[2])
+        ruta.write_text(json.dumps(spec, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"{len(spec['cotizaciones'])} cotización(es) guardadas en {ruta.name}")
+        for x in avisos:
+            print("⚠", x)
+        return
     if len(a) < 3:
         sys.exit(__doc__)
     spec = json.loads(Path(a[1]).read_text(encoding="utf-8"))

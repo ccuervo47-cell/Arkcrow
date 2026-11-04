@@ -54,6 +54,23 @@ class TestApuUnad(unittest.TestCase):
         self.assertEqual(r[f"F{fila}"].value, 17500)
         self.assertAlmostEqual(r[f"H{fila}"].value, r[f"G{fila}"].value / 17500 - 1, places=6)
 
+    def test_cotizaciones_reemplazan_supuestos(self):
+        from openpyxl import load_workbook
+        plantilla = apu_unad.plantilla_cotizaciones(self.tmp / "oficial.xlsx", SPEC, self.tmp / "cot.xlsx")
+        wb = load_workbook(plantilla)
+        ws = wb["COTIZACIONES"]
+        fila = next(r for r in range(2, ws.max_row + 1) if ws.cell(r, 2).value == "Abono")
+        ws.cell(fila, 6, 2100)
+        ws.cell(fila, 7, "Vivero El Prado")
+        ws.cell(fila, 8, "05/11/2026")
+        wb.save(plantilla)
+        spec, avisos = apu_unad.aplicar_cotizaciones(SPEC, plantilla)
+        self.assertEqual(spec["cotizaciones"]["Abono"]["precio"], 2100)
+        self.assertEqual(avisos, [])
+        salida = apu_unad.construir(self.tmp / "oficial.xlsx", spec, self.tmp / "cotizado.xlsx")
+        wv = load_workbook(recalcular(salida), data_only=True)
+        self.assertAlmostEqual(wv["2.3"]["M61"].value, 0.11 * 85000 + 0.5 * 2100, places=1)
+
     def test_insumo_inexistente_falla(self):
         malo = {**SPEC, "apus": [{"item": "2.3", "eq": [], "mat": [["No existe", 1]], "mo": []}]}
         with self.assertRaises(KeyError):
