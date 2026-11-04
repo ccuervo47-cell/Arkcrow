@@ -18,7 +18,9 @@ from . import conocimiento, enrutador, llm, memoria, nube
 
 RAIZ = Path(__file__).resolve().parents[2]
 COLA = RAIZ / "datos" / "cola.json"
-MAX_MEMORIA = 12000   # caracteres de memoria que se envían al modelo
+MAX_MEMORIA = 3500    # caracteres de memoria que se envían al modelo local (más = más lento en CPU)
+MAX_FRAGMENTO = 1000  # caracteres por fragmento citado
+K_MODELO = 4          # fragmentos que se envían al modelo
 
 
 def reglas_agente() -> str:
@@ -122,7 +124,9 @@ class Asistente:
     # ------------------------------------------------------------ respuesta
     def _contexto_memoria(self) -> str:
         partes, total = [], 0
-        for ruta, txt in self.memoria.items():
+        orden = sorted(self.memoria.items(), key=lambda kv: (0 if "/proyectos/" in kv[0] else
+                                                             1 if "empresa" in kv[0] else 2 if "lecciones" in kv[0] else 3))
+        for ruta, txt in orden:
             bloque = f"### {ruta}\n{txt.strip()}\n"
             if total + len(bloque) > MAX_MEMORIA:
                 break
@@ -167,8 +171,11 @@ class Asistente:
         if texto is None and d.motor == "local":
             try:
                 texto = aviso + self._con_modelo(pregunta, fuentes, d.modelo, faltan)
-            except llm.OllamaNoDisponible:
+            except llm.OllamaNoDisponible as e:
                 d = enrutador.Decision(d.modo, "busqueda", None, "el modelo local no respondió", fuentes)
+                demora = "tardó demasiado" if "timed out" in str(e).lower() or "timeout" in str(e).lower() else "no respondió"
+                aviso += (f"⏱ El modelo local {demora}. Haga una pregunta más concreta (un tema o un ítem a la vez) "
+                          "o cambie a un modelo más pequeño en .env. Mientras tanto, estos son los fragmentos:\n\n")
         if texto is None:
             texto = aviso + self._extractiva(fuentes)
         if sugerir:
@@ -177,7 +184,8 @@ class Asistente:
         return Respuesta(texto, d, fuentes, time.time() - t0, sugerir, aviso_modo)
 
     def _mensajes(self, pregunta, fuentes) -> list[dict]:
-        frag = "\n\n".join(f"{f['cita']}\n{f['texto']}" for f in fuentes) or "(no se encontraron fragmentos)"
+        frag = "\n\n".join(f"{f['cita']}\n{f['texto'][:MAX_FRAGMENTO]}" for f in fuentes[:K_MODELO]) \
+            or "(no se encontraron fragmentos)"
         return self.historial[-6:] + [
             {"role": "user", "content": f"FRAGMENTOS DE LA BASE LOCAL:\n{frag}\n\nPREGUNTA: {pregunta}"}]
 
@@ -234,7 +242,7 @@ class Asistente:
         if not fuentes:
             return ("No tengo información sobre eso en la base local. Agregue el documento a conocimiento/ "
                     "y reindexe, o consúltelo cuando haya internet.")
-        L = ["No hay modelo de lenguaje disponible; estos son los fragmentos más relevantes de la base local:"]
+        L = ["Fragmentos más relevantes de la base local:"]
         for f in fuentes[:3]:
             texto = re.sub(r"\n{2,}", "\n", f["texto"]).strip()
             L.append(f"\n▸ {f['cita']}\n{texto[:900]}{'…' if len(texto) > 900 else ''}")

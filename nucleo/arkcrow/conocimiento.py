@@ -26,6 +26,7 @@ INDICE = RAIZ / "datos" / "indice.sqlite"
 FUENTES = [RAIZ / "conocimiento", RAIZ / "memoria"]
 EXTENSIONES = {".pdf", ".md", ".txt", ".docx", ".xlsx", ".csv", ".dxf"}
 TAM, SOLAPE = 1500, 200
+VERSION_LECTOR = "2"   # súbala cuando cambie cómo se extrae el texto: fuerza reindexar todo
 
 STOP = set("""a al algo como con cual cuales cuando de del desde donde el ella ellas ellos en entre era es esa ese eso esta
 este esto estos fue ha hay la las le les lo los mas me mi mis muy no nos o para pero por que quien se segun ser si sin
@@ -75,11 +76,28 @@ def _docx(ruta: Path):
 
 
 def _xlsx(ruta: Path):
+    """Una ubicación por hoja. Las filas que se repiten en muchas hojas (encabezados de formato, firmas) se
+    indexan UNA sola vez como «encabezado común», para que cada hoja aporte solo lo propio (ítem, insumos...)."""
+    from collections import Counter
     from openpyxl import load_workbook
     wb = load_workbook(ruta, data_only=True, read_only=True)
+    hojas = []
     for ws in wb:
-        filas = [" | ".join(str(v) for v in f if v not in (None, "")) for f in ws.iter_rows(values_only=True)]
-        yield f"hoja «{ws.title}»", "\n".join(f for f in filas if f)
+        filas = [" | ".join(str(v).strip() for v in f if v not in (None, "") and str(v).strip())
+                 for f in ws.iter_rows(values_only=True)]
+        hojas.append((ws.title, [f for f in filas if f]))
+    wb.close()
+    comunes = set()
+    if len(hojas) >= 3:
+        cuenta = Counter(f for _, filas in hojas for f in set(filas))
+        comunes = {f for f, n in cuenta.items() if n >= max(3, len(hojas) * 0.5)}
+    if comunes:
+        primera = next((filas for _, filas in hojas if filas), [])
+        yield "encabezado común de las hojas", "\n".join(f for f in primera if f in comunes)
+    for titulo, filas in hojas:
+        propias = [f for f in filas if f not in comunes]
+        if propias:
+            yield f"hoja «{titulo}»", "\n".join(propias)
 
 
 def extraer(ruta: Path):
@@ -170,6 +188,13 @@ def indexar(con: sqlite3.Connection | None = None, embeddings: bool = True, verb
     from . import llm
     con = con or conectar()
     exportar_precios()
+    previa = con.execute("SELECT valor FROM meta WHERE clave='lector'").fetchone()
+    if not previa or previa[0] != VERSION_LECTOR:     # cambió el lector: se vuelven a leer todos los documentos
+        con.execute("DELETE FROM docs")
+        con.execute("DELETE FROM chunks")
+        con.execute("DELETE FROM chunks_fts")
+        con.execute("INSERT OR REPLACE INTO meta VALUES ('lector', ?)", (VERSION_LECTOR,))
+        con.commit()
     vistos, nuevos, borrados = set(), 0, 0
     for f in _archivos():
         rel = f.relative_to(RAIZ).as_posix()

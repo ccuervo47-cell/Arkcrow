@@ -81,7 +81,8 @@ def chat(mensajes: list[dict], modelo: str | None = None, temperatura: float = 0
     if not modelo:
         raise OllamaNoDisponible("No hay modelo local instalado.")
     r = _post("/api/chat", {"model": modelo, "messages": mensajes, "stream": False,
-                            "options": {"temperature": temperatura, "num_ctx": 8192}})
+                            "options": {"temperature": temperatura, "num_ctx": 6144},
+                            "keep_alive": "30m"}, timeout=900)
     return r["message"]["content"]
 
 
